@@ -18,3 +18,7 @@ class MysqlConfigProblem(Enum):
     GTID_NOT_ENABLED = 3 
     GTID_CONSISTENCY_NOT_ENABLED = 4
     NO_PROBLEM = 0
+
+
+# class ProxySQLBackendState(Enum): 
+#     REPLICA =     

@@ -1,4 +1,5 @@
 from mysql_manager.instance import MysqlInstance
+from mysql_manager.proxysql import ProxySQL
 
 def test_normal_info_wrong():
     tests = [
@@ -45,6 +46,18 @@ def test_replication():
     src.add_replica(repl)
     print("src replica: " + src.replicas[0].host)
     print("is src master of repl: " + str(src.is_master_of(repl)))
+
+def test_proxysql():
+    tests = [
+        {"host": "test-mysql-s1-svc", "user": "root", "password": "root"},
+        {"host": "test-mysql-s2-svc", "user": "root", "password": "root"},
+        {"host": "test-proxysql-svc", "user": "radmin", "password": "radmin", "mysql_user": "str", 
+        "mysql_password": "str",
+        "monitor_user": "str", 
+        "monitor_password": "str"},
+    ]
+    px = ProxySQL(**tests[2])
+    print("Pinged: " + str(px.ping()))
 
 
 if __name__ == "__main__": 

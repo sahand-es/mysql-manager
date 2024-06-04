@@ -1,0 +1,7 @@
+[mysqld]
+server-id = 11
+gtid-mode = ON
+enforce-gtid-consistency = ON
+log-bin = binlog
+relay-log = relaylog
+datadir = /var/lib/mysql

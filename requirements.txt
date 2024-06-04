@@ -1,2 +1,4 @@
-mysql-connector-python==8.4.0 ; python_version >= "3.11" and python_version < "4.0"
+cffi==1.16.0 ; python_version >= "3.11" and python_version < "4.0" and platform_python_implementation != "PyPy"
+cryptography==42.0.7 ; python_version >= "3.11" and python_version < "4.0"
+pycparser==2.22 ; python_version >= "3.11" and python_version < "4.0" and platform_python_implementation != "PyPy"
 pymysql==1.1.0 ; python_version >= "3.11" and python_version < "4.0"

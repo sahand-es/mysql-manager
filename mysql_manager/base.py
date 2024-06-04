@@ -24,7 +24,26 @@ class BaseManager:
             print(e)
             return None
         return db 
-    
+
+    def get_info(self, command: str) -> dict: 
+        db = self._get_db()
+        if db is None: 
+            print("Could not connect to mysql")
+            return None
+        
+        result = None 
+        with db: 
+            with db.cursor() as cursor:
+                try: 
+                    cursor.execute(command)
+                    result = cursor.fetchone()
+                    # print(result)
+                except Exception as e:
+                    print(e) 
+                    return None
+                
+        return result
+        
     def ping(self) -> bool:
         db = self._get_db()
         if db is None: 

@@ -1,6 +1,6 @@
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.proxysql import ProxySQL
-import os 
+import os, time 
 
 
 MYSQL_S1_HOST = os.getenv("MYSQL_S1_HOST")
@@ -19,6 +19,7 @@ repl.set_master(src)
 repl.start_replication("replica", MYSQL_REPL_PASSWORD)
 
 src.create_new_user("proxysql", PROXYSQL_MON_PASSWORD, ["USAGE", "REPLICATION CLIENT"])
+time.sleep(5)
 px = ProxySQL(
     PROXYSQL_HOST, 
     "radmin", 

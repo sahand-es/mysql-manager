@@ -4,7 +4,7 @@ from mysql_manager.enums import (
     MysqlReplicationProblem,
 )
 
-from mysql_manager.exceptions import MysqlConnectionException
+from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException
 
 
 class MysqlInstance:
@@ -237,26 +237,26 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
     def start_replication(self, repl_user: str, repl_password: str): 
         if self.master is None: 
             self._log("No master set for this instance")
-            return 
+            raise MysqlReplicationException()
         
         if not self.master.ping():
             self._log("Master not accesible")
-            return 
+            raise MysqlReplicationException()
         
         cfg_problems = self.find_config_problems()
         if len(cfg_problems) != 0: 
             self._log("Problem in config: " + str(cfg_problems))
-            return
+            raise MysqlReplicationException()
 
         repl_status = self.get_replica_status()
         if repl_status is not None and repl_status["Replica_IO_Running"] == "Yes" and repl_status["Replica_SQL_Running"] == "Yes": 
             self._log("Replication is running")
-            return
+            raise MysqlReplicationException()
 
         db = self._get_db()
         if db is None: 
             print("Could not connect to mysql")
-            return None
+            raise MysqlConnectionException()
         
         with db: 
             with db.cursor() as cursor:
@@ -270,3 +270,4 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
                     self._log(str(result))
                 except Exception as e:
                     self._log(str(e)) 
+                    raise MysqlReplicationException()

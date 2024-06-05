@@ -1,7 +1,8 @@
 ## build 
 run this to build docker image: 
 ```sh 
-docker build -t mysql-manager:v0.1 . 
+docker build -t registry.hamdocker.ir/public/mysql-manager:v0.1 . 
+docker push registry.hamdocker.ir/public/mysql-manager:v0.1 
 ```
 
 ## tests

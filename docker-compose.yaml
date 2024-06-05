@@ -2,8 +2,8 @@ version: '3'
 
 services:
   mm:
-    image: mysql-manager:v0.1
-    command: /app/tests/setup.sh
+    image: registry.hamdocker.ir/public/mysql-manager:v0.1
+    command: sleep inf
     environment: 
       MYSQL_S1_HOST: mysql-s1
       MYSQL_S2_HOST: mysql-s2

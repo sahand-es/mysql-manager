@@ -26,7 +26,19 @@ services:
       MYSQL_ROOT_PASSWORD: 'root'
     volumes:
       - './tests/config/mysql-s2.cnf:/etc/mysql/conf.d/mysql.cnf'
+  mysql-exporter-s2: 
+    image: hub.hamdocker.ir/prom/mysqld-exporter:v0.15.1
+    command: "--config.my-cnf=/etc/my.cnf"
+    volumes:
+      - './tests/config/mysql-exporter-s2.cnf:/etc/my.cnf'
   proxysql: 
     image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
     volumes:
       - './tests/config/proxysql.cnf:/etc/proxysql.cnf'
+  promtheus: 
+    image: hub.hamdocker.ir/prom/prometheus
+    volumes: 
+    - './tests/config/prometheus.yaml:/etc/prometheus/prometheus.yml'
+    - './tests/config/rules.yaml:/etc/prometheus/rules.yaml'
+    ports: 
+    - "9090:9090"

@@ -1,0 +1,12 @@
+groups:
+- name: mysql
+  rules:
+  - alert: mysql:replication_sql:problem
+    expr: mysql_slave_status_slave_sql_running == 0
+    for: 1m
+    labels:
+      severity: critical
+      db_type: mysql
+    annotations:
+      summary: replication is down
+      description: replication is down

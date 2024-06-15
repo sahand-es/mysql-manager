@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 10s 
+  evaluation_interval: 10s 
+rule_files: 
+- /etc/prometheus/rules.yaml
+scrape_configs:
+  - job_name: "mysql-s2"
+    static_configs:
+      - targets: ["mysql-exporter-s2:9104"]

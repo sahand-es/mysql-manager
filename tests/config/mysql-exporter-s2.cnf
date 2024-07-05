@@ -1,4 +1,4 @@
 [client]
 host = mysql-s2
-user = root
-password = root
+user = exporter
+password = exporter

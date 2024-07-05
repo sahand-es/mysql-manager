@@ -9,6 +9,7 @@ services:
       MYSQL_S2_HOST: mysql-s2
       MYSQL_ROOT_PASSWORD: root
       MYSQL_REPL_PASSWORD: repl
+      MYSQL_EXPORTER_PASSWORD: exporter
       PROXYSQL_HOST: proxysql
       PROXYSQL_PASSWORD: pwd 
       PROXYSQL_MON_PASSWORD: pwd
@@ -31,6 +32,8 @@ services:
     command: "--config.my-cnf=/etc/my.cnf"
     volumes:
       - './tests/config/mysql-exporter-s2.cnf:/etc/my.cnf'
+    ports: 
+    - 9104:9104
   proxysql: 
     image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
     volumes:

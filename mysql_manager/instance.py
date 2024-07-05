@@ -69,6 +69,31 @@ class MysqlInstance:
                     raise e
         
         return True
+    
+    def create_monitoring_user(self, password: str):
+        db = self._get_db()
+        if db is None: 
+            print("Could not connect to mysql")
+            raise MysqlConnectionException()
+    
+        with db: 
+            with db.cursor() as cursor:
+                try: 
+                    cursor.execute(
+                        f"CREATE USER 'exporter'@'%' IDENTIFIED WITH mysql_native_password BY '{password}' WITH MAX_USER_CONNECTIONS 3"
+                    )
+                    cursor.execute(
+                        "GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'exporter'@'%'"
+                    )
+                    cursor.execute(
+                        "GRANT SELECT ON performance_schema.* TO 'exporter'@'%'"
+                    )
+                    cursor.execute("FLUSH PRIVILEGES")
+                    result = cursor.fetchone()
+                    self._log(str(result))
+                except Exception as e: 
+                    self._log(str(e))
+                    raise e
 
     def create_new_user(self, user: str, password: str, grants: list[str]):
         db = self._get_db()

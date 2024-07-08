@@ -1,5 +1,6 @@
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.base import BaseManager
+from mysql_manager.exceptions import MysqlConnectionException
 
 class ProxySQL(BaseManager): 
     def __init__(
@@ -23,7 +24,7 @@ class ProxySQL(BaseManager):
         db = self._get_db()
         if db is None: 
             print("Could not connect to proxysql")
-            return
+            raise MysqlConnectionException
         
         with db: 
             with db.cursor() as cursor:
@@ -38,6 +39,7 @@ class ProxySQL(BaseManager):
                     self.backends.append(instance)
                 except Exception as e: 
                     print(e)
+                    raise Exception
 
     def find_backend_problems(self):
         pass 
@@ -49,7 +51,7 @@ class ProxySQL(BaseManager):
         db = self._get_db()
         if db is None: 
             print("Could not connect to mysql")
-            return
+            raise MysqlConnectionException
         
         with db: 
             with db.cursor() as cursor:
@@ -71,7 +73,7 @@ class ProxySQL(BaseManager):
                     print(result)
                 except Exception as e: 
                     print(e)
-                    return
+                    raise e
 
 
 

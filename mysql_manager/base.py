@@ -1,4 +1,5 @@
 import pymysql
+from mysql_manager.exceptions import MysqlConnectionException
 
 class BaseManager: 
     def __init__(self, host: str, user: str, password: str, port: int=3306) -> None:
@@ -29,7 +30,7 @@ class BaseManager:
         db = self._get_db()
         if db is None: 
             print("Could not connect to mysql")
-            return None
+            raise MysqlConnectionException
         
         result = None 
         with db: 
@@ -40,7 +41,7 @@ class BaseManager:
                     # print(result)
                 except Exception as e:
                     print(e) 
-                    return None
+                    raise e
                 
         return result
         
@@ -48,7 +49,7 @@ class BaseManager:
         db = self._get_db()
         if db is None: 
             print("Could not connect to server")
-            return False
+            raise MysqlConnectionException
         
         with db:
             try: 

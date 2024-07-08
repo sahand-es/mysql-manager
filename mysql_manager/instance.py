@@ -5,9 +5,9 @@ from mysql_manager.enums import (
 )
 
 from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException
+from mysql_manager.base import BaseManager
 
-
-class MysqlInstance:
+class MysqlInstance(BaseManager):
     def __init__(self, host: str, user: str, password: str, port: int=3306) -> None:
         self.host = host 
         self.port = port
@@ -34,20 +34,6 @@ class MysqlInstance:
     def _log(self, msg) -> None:
         print("host: " + self.host + ", " + msg)
  
-    def _get_db(self):
-        db = None 
-        try:
-            db = pymysql.Connection(
-                host=self.host,
-                user=self.user,
-                password=self.password,
-                port=self.port,
-                cursorclass=pymysql.cursors.DictCursor,
-            )
-        except Exception as e: 
-            print(e)
-            return None
-        return db 
     
     def user_exists(self, user: str, grants: list[str]) -> bool: 
         db = self._get_db()
@@ -117,19 +103,6 @@ class MysqlInstance:
                 except Exception as e: 
                     self._log(str(e))
                     return -1
-        
-    def ping(self) -> bool:
-        db = self._get_db()
-        if db is None: 
-            print("Could not connect to mysql")
-            return False
-        
-        with db:
-            try: 
-                db.ping(reconnect=True)
-            except: 
-                return False 
-        return True 
     
     def find_config_problems(self) -> list[MysqlReplicationProblem]: 
         db = self._get_db()
@@ -159,26 +132,7 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
         if result["@@global.enforce_gtid_consistency"] != "ON":
             problems.append(MysqlConfigProblem.GTID_CONSISTENCY_NOT_ENABLED)
         
-        return problems
-
-    def get_info(self, command: str) -> dict: 
-        db = self._get_db()
-        if db is None: 
-            print("Could not connect to mysql")
-            return None
-        
-        result = None 
-        with db: 
-            with db.cursor() as cursor:
-                try: 
-                    cursor.execute(command)
-                    result = cursor.fetchone()
-                    # print(result)
-                except Exception as e:
-                    print(e) 
-                    return None
-                
-        return result         
+        return problems         
 
     def is_master_of(self, replica) -> bool:
         status = replica.get_replica_status()

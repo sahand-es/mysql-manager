@@ -1,4 +1,5 @@
 .devcontainer.json
 venv
+config.ini
 .idea
 __pycache__

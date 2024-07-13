@@ -1,1 +1,4 @@
 .devcontainer.json
+venv
+.idea
+__pycache__

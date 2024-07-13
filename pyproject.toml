@@ -9,7 +9,7 @@ readme = "README.md"
 python = "^3.11"
 pymysql = "^1.1.0"
 cryptography = "^42.0.8"
-
+click = "^8.1.7"
 
 [build-system]
 requires = ["poetry-core"]

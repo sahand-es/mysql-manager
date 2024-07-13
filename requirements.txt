@@ -1,4 +1,6 @@
 cffi==1.16.0 ; python_version >= "3.11" and python_version < "4.0" and platform_python_implementation != "PyPy"
+click==8.1.7 ; python_version >= "3.11" and python_version < "4.0"
+colorama==0.4.6 ; python_version >= "3.11" and python_version < "4.0" and platform_system == "Windows"
 cryptography==42.0.8 ; python_version >= "3.11" and python_version < "4.0"
 pycparser==2.22 ; python_version >= "3.11" and python_version < "4.0" and platform_python_implementation != "PyPy"
 pymysql==1.1.0 ; python_version >= "3.11" and python_version < "4.0"

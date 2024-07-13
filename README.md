@@ -5,6 +5,11 @@ docker build -t registry.hamdocker.ir/public/mysql-manager:v0.1 .
 docker push registry.hamdocker.ir/public/mysql-manager:v0.1 
 ```
 
+## generate requirements.txt 
+```sh
+poetry export --without-hashes --format=requirements.txt > requirements.txt
+```
+
 ## tests
 to run tests:  
 ```sh

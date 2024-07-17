@@ -1,0 +1,596 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: mysql
+    release: release-all
+  name: release-all-mysql-s1-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: rawfile-ext4
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  mysql.cnf: |
+    [mysqld]
+    server-id = 1
+    gtid-mode = ON
+    enforce-gtid-consistency = ON
+    log-bin = binlog
+    relay-log = relaylog
+    datadir = /var/lib/mysql
+    binlog_expire_logs_seconds = 259200
+    binlog_expire_logs_auto_purge = ON
+    max_binlog_size = 104857600
+    slow_query_log = 1
+    long_query_time = 1
+    slow_query_log_file = /var/lib/mysql/slow.log
+    max_connections = 1000
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: mysql
+    release: release-all
+  name: release-all-mysql-s1-config
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: mysql
+    mysql-replication: gtid-async
+    mysql-server-id: "1"
+    release: release-all
+  name: release-all-mysql-s1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+      component: mysql
+      mysql-replication: gtid-async
+      mysql-server-id: "1"
+      release: release-all
+  serviceName: mysql-s1
+  template:
+    metadata:
+      labels:
+        app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+        component: mysql
+        mysql-replication: gtid-async
+        mysql-server-id: "1"
+        release: release-all
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: component
+                      operator: In
+                      values:
+                        - mysql
+                    - key: release
+                      operator: In
+                      values:
+                        - release-all
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+          requiredDuringSchedulingIgnoredDuringExecution: []
+      containers:
+        - env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: password
+          image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+          imagePullPolicy: IfNotPresent
+          name: main
+          ports:
+            - containerPort: 3306
+              name: mysql
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 800m
+              ephemeral-storage: 500Mi
+              memory: 1000M
+            requests:
+              cpu: 40m
+              ephemeral-storage: 50Mi
+              memory: 80M
+          volumeMounts:
+            - mountPath: /etc/mysql/conf.d/
+              name: config
+            - mountPath: /var/lib/mysql
+              name: data
+      enableServiceLinks: false
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - configMap:
+            name: release-all-mysql-s1-config
+          name: config
+        - name: data
+          persistentVolumeClaim:
+            claimName: release-all-mysql-s1-data
+  volumeClaimTemplates: []
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: mysql
+    release: release-all
+  name: release-all-mysql-s1-svc
+spec:
+  ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+  selector:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: mysql
+    mysql-server-id: "1"
+    release: release-all
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  my.cnf: |
+    [client]
+    host = release-all-mysql-s1-svc
+    user = exporter
+    password = password
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: mysql_exporter
+    release: release-all
+  name: release-all-mysql-exporter-s1-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: mysql_exporter
+    mysql-replication: gtid-async
+    mysql-server-id: "1"
+    release: release-all
+  name: release-all-mysql-exporter-s1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+      component: mysql_exporter
+      mysql-replication: gtid-async
+      mysql-server-id: "1"
+      release: release-all
+  template:
+    metadata:
+      labels:
+        app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+        component: mysql_exporter
+        mysql-replication: gtid-async
+        mysql-server-id: "1"
+        release: release-all
+    spec:
+      containers:
+        - args:
+            - --config.my-cnf=/etc/my.cnf
+          env: []
+          image: hub.hamdocker.ir/prom/mysqld-exporter:v0.15.1
+          imagePullPolicy: IfNotPresent
+          name: main
+          ports:
+            - containerPort: 9104
+              name: metrics
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 100m
+              ephemeral-storage: 100Mi
+              memory: 200Mi
+            requests:
+              cpu: 10m
+              ephemeral-storage: 10Mi
+              memory: 20Mi
+          volumeMounts:
+            - mountPath: /etc/my.cnf
+              name: config
+              subPath: my.cnf
+      enableServiceLinks: false
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - configMap:
+            name: release-all-mysql-exporter-s1-config
+          name: config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: mysql_exporter
+    mysql-server-id: "1"
+    release: release-all
+  name: release-all-mysql-exporter-s1-svc
+spec:
+  ports:
+    - name: metrics
+      port: 9104
+      protocol: TCP
+      targetPort: 9104
+  selector:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: mysql_exporter
+    mysql-server-id: "1"
+    release: release-all
+  type: ClusterIP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    release-name: release-all
+    release-namespace: dbaas-staging
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    app.kubernetes.io/managed-by: mysql
+  name: release-all-mysql-s1-exporter
+  namespace: dbaas-staging
+spec:
+  endpoints:
+    - metricRelabelings:
+        - action: replace
+          regex: (.*)
+          replacement: mysql
+          separator: ;
+          targetLabel: dbaas_service
+      path: /metrics
+      targetPort: metrics
+  namespaceSelector:
+    matchNames:
+      - production
+  selector:
+    matchLabels:
+      app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+      component: mysql_exporter
+      mysql-server-id: "1"
+      release: release-all
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    release-name: release-all
+    release-namespace: dbaas-staging
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    app.kubernetes.io/managed-by: mysql
+  name: release-all-proxysql
+  namespace: dbaas-staging
+spec:
+  endpoints:
+    - metricRelabelings:
+        - action: replace
+          regex: (.*)
+          replacement: mysql
+          separator: ;
+          targetLabel: dbaas_service
+      path: /metrics
+      targetPort: metrics
+  namespaceSelector:
+    matchNames:
+      - production
+  selector:
+    matchLabels:
+      app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+      component: proxysql
+      release: release-all
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: proxysql
+    release: release-all
+  name: release-all-proxysql-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+  storageClassName: rawfile-ext4
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  proxysql.cnf: |
+    datadir="/var/lib/proxysql"
+    admin_variables=
+    {
+        admin_credentials="admin:px-admin;radmin:px-admin"
+        mysql_ifaces="0.0.0.0:6032"
+        restapi_enabled=true
+        restapi_port=6070
+    }
+    mysql_variables=
+    {
+        threads=4
+        max_connections=2000
+        default_query_delay=0
+        default_query_timeout=360000
+        interfaces="0.0.0.0:3306"
+        default_schema="information_schema"
+        stacksize=1048576
+        server_version="5.5.30"
+        connect_timeout_server=1000
+        connect_retries_on_failure=3
+        connect_timeout_server_max=10000
+        monitor_history=600000
+        monitor_connect_interval=60000
+        monitor_ping_interval=10000
+        monitor_read_only_interval=1000
+        monitor_read_only_timeout=800
+        ping_interval_server_msec=10000
+        ping_timeout_server=500
+        commands_stats=true
+        sessions_sort=true
+    }
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: proxysql
+    release: release-all
+  name: release-all-proxysql-config
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: proxysql
+    mysql-replication: gtid-async
+    release: release-all
+  name: release-all-proxysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+      component: proxysql
+      mysql-replication: gtid-async
+      release: release-all
+  serviceName: proxysql
+  template:
+    metadata:
+      labels:
+        app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+        component: proxysql
+        mysql-replication: gtid-async
+        release: release-all
+    spec:
+      containers:
+        - env: []
+          image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
+          imagePullPolicy: IfNotPresent
+          name: main
+          ports:
+            - containerPort: 3306
+              name: mysql
+              protocol: TCP
+            - containerPort: 6032
+              name: admin
+              protocol: TCP
+            - containerPort: 6070
+              name: metrics
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 100m
+              ephemeral-storage: 500Mi
+              memory: 300M
+            requests:
+              cpu: 40m
+              ephemeral-storage: 50Mi
+              memory: 80M
+          volumeMounts:
+            - mountPath: /etc/proxysql.cnf
+              name: config
+              subPath: proxysql.cnf
+            - mountPath: /var/lib/proxysql
+              name: data
+      enableServiceLinks: false
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - configMap:
+            name: release-all-proxysql-config
+          name: config
+        - name: data
+          persistentVolumeClaim:
+            claimName: release-all-proxysql-data
+  volumeClaimTemplates: []
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: proxysql
+    release: release-all
+  name: release-all-proxysql-svc
+spec:
+  ports:
+    - name: mysql
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+    - name: admin
+      port: 6032
+      protocol: TCP
+      targetPort: 6032
+    - name: metrics
+      port: 6070
+      protocol: TCP
+      targetPort: 6070
+  selector:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: proxysql
+    release: release-all
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: backup
+    mysql-replication: gtid-async
+    release: release-all
+  name: release-all-backup
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+      component: backup
+      mysql-replication: gtid-async
+      release: release-all
+  serviceName: backup
+  template:
+    metadata:
+      labels:
+        app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+        component: backup
+        mysql-replication: gtid-async
+        release: release-all
+    spec:
+      containers:
+        - command:
+            - /bin/bash
+            - -ec
+            - sleep inf
+          env:
+            - name: AWS_SECRET_ACCESS_KEY
+              value: walg-secret
+            - name: AWS_ACCESS_KEY_ID
+              value: walg-access
+            - name: AWS_ENDPOINT
+              value: https://dbaas.hs3.ir/
+            - name: AWS_S3_FORCE_PATH_STYLE
+              value: "true"
+            - name: WALG_MYSQL_DATASOURCE_NAME
+              value: root:password@tcp(release-all-mysql-s1-svc:3306)/information_schema
+            - name: WALG_S3_PREFIX
+              value: s3://customer-1/
+            - name: WALG_STREAM_CREATE_COMMAND
+              value: xtrabackup --backup --host=release-all-mysql-s1-svc --user=root --password=password --stream=xbstream --datadir=/var/lib/mysql
+            - name: WALG_STREAM_RESTORE_COMMAND
+              value: xbstream -x -C /var/lib/mysql
+            - name: WALG_MYSQL_BACKUP_PREPARE_COMMAND
+              value: xtrabackup --prepare --target-dir=/var/lib/mysql
+            - name: WALG_MYSQL_BINLOG_DST
+              value: /var/lib/mysql/__bdst
+          image: registry.hamdocker.ir/public/walg-xtrabackup:v0.1-8.0.35
+          imagePullPolicy: IfNotPresent
+          name: main
+          resources:
+            limits:
+              cpu: 400m
+              ephemeral-storage: 500Mi
+              memory: 800M
+            requests:
+              cpu: 40m
+              ephemeral-storage: 50Mi
+              memory: 80M
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: data
+      enableServiceLinks: false
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: release-all-mysql-s1-data
+  volumeClaimTemplates: []
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+    component: mysql_manager
+    mysql-replication: gtid-async
+    release: release-all
+  name: release-all-mysql-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+      component: mysql_manager
+      mysql-replication: gtid-async
+      release: release-all
+  template:
+    metadata:
+      labels:
+        app-id: fd3g53e4-7216-563w-b511-9b38ebbf2hh2
+        component: mysql_manager
+        mysql-replication: gtid-async
+        release: release-all
+    spec:
+      containers:
+        - command:
+            - /bin/sleep
+            - inf
+          env:
+            - name: MYSQL_S1_HOST
+              value: release-all-mysql-s1-svc
+            - name: MYSQL_S2_HOST
+              value: release-all-mysql-s2-svc
+            - name: MYSQL_ROOT_PASSWORD
+              value: password
+            - name: MYSQL_REPL_PASSWORD
+              value: password
+            - name: MYSQL_EXPORTER_PASSWORD
+              value: password
+            - name: PROXYSQL_HOST
+              value: release-all-proxysql-svc
+            - name: PROXYSQL_PASSWORD
+              value: px-admin
+            - name: PROXYSQL_MON_PASSWORD
+              value: px-monitor
+          image: registry.hamdocker.ir/public/mysql-manager:v0.2.0
+          imagePullPolicy: Always
+          name: main
+          resources:
+            limits:
+              cpu: 50m
+              ephemeral-storage: 10Mi
+              memory: 100M
+            requests:
+              cpu: 10m
+              ephemeral-storage: 10Mi
+              memory: 10M
+          volumeMounts: []
+      enableServiceLinks: false
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      volumes: []

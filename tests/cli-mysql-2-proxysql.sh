@@ -20,7 +20,7 @@ docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select 
 docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "SELECT * FROM monitor.mysql_server_connect_log ORDER BY time_start_us DESC LIMIT 6"
 docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select Queries, srv_host from stats_mysql_connection_pool\G"
 docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select * from stats_mysql_query_rules"
-
+docker compose exec mysql-s1 mysql -uroot -proot -e "USE mysql; SHOW EVENTS;"
 
 echo -e "\n\nChecking metrics from exporter..."
 curl localhost:9104/metrics | grep mysql_up

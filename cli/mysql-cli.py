@@ -215,5 +215,17 @@ def get_info(ctx, host, command):
     print(f"Get-Info Result: {res}")
 
 
+@mysql.command()
+@click.option('-h', '--host', help='MySQL host')
+@click.option('-i', '--intervals', help='Intervals of flushing PITR binlogs in minutes')
+@click.pass_context
+def add_pitr_event(ctx, host, intervals):
+    config = ctx.obj['CONFIG']
+
+    ins = MysqlInstance(host, *get_instance_from_config(config, host))
+    res = ins.add_pitr_event(intervals)
+    print(f"Add PITR Event Result: {res}")
+
+
 if __name__ == '__main__':
     cli()

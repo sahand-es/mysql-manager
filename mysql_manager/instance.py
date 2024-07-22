@@ -1,10 +1,12 @@
+import textwrap
+
 import pymysql
 from mysql_manager.enums import (
     MysqlConfigProblem,
     MysqlReplicationProblem,
 )
 
-from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException
+from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException, MysqlAddPITREventException
 from mysql_manager.base import BaseManager
 
 class MysqlInstance(BaseManager):
@@ -250,3 +252,22 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
                 except Exception as e:
                     self._log(str(e)) 
                     raise MysqlReplicationException()
+
+    def add_pitr_event(self, minute_intervals):
+        db = self._get_db()
+        if db is None:
+            print("Could not connect to mysql")
+            raise MysqlConnectionException()
+
+        with db:
+            with db.cursor() as cursor:
+                try:
+                    cursor.execute("USE mysql;")
+                    cursor.execute(
+                        f"CREATE EVENT pitr ON SCHEDULE EVERY {minute_intervals} MINUTE DO FLUSH BINARY LOGS;"
+                    )
+                    result = cursor.fetchone()
+                    self._log(str(result))
+                except Exception as e:
+                    self._log(str(e))
+                    raise MysqlAddPITREventException()

@@ -29,6 +29,9 @@ python /app/cli/mysql-cli.py mysql create-monitoring-user --host $MYSQL_S1_HOST 
 echo -e "\nproxysql operations: "
 python /app/cli/mysql-cli.py mysql create-user --host $MYSQL_S1_HOST --user proxysql --password pass --roles "USAGE,REPLICATION CLIENT"
 
+echo -e "\nset pitr event: "
+python /app/cli/mysql-cli.py mysql add-pitr-event -h $MYSQL_S1_HOST -i 15
+
 echo -e "\nSleeping for 10 seconds..."
 sleep 10
 

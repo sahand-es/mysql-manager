@@ -2,7 +2,7 @@ version: '3'
 
 services:
   mm:
-    image: registry.hamdocker.ir/public/mysql-manager:v0.2.1
+    image: registry.hamdocker.ir/public/mysql-manager:b212be8e
     command: sleep inf
     environment: 
       MYSQL_S1_HOST: mysql-s1

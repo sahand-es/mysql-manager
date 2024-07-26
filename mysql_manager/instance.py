@@ -248,7 +248,7 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
                     self._log(str(e)) 
                     raise MysqlReplicationException()
 
-    def add_pitr_event(self, minute_intervals):
+    def add_pitr_event(self, minute_intervals: int=15):
         db = self._get_db()
         if db is None:
             self._log("Could not connect to mysql")

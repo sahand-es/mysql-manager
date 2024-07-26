@@ -48,7 +48,8 @@ class ClusterManager:
         self.read_config_file()
         
         self.check_servers_up()
-
+        
+        self.src.add_pitr_event(15)
         self.src.create_new_user(
             "replica", self.users["repl_password"], ["REPLICATION SLAVE"]
         )

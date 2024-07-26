@@ -13,6 +13,9 @@ docker compose exec mysql-s1 mysql -udbadmin -ppassword -h proxysql -e "select *
 echo -e "\n\nChecking master..."
 docker compose exec mysql-s1 mysql -uroot -proot -e "select * from sales.t1;"
 
+echo -e "\n\nChecking events in master..."
+docker compose exec mysql-s1 mysql -uroot -proot -e "USE mysql; SHOW EVENTS;"
+
 echo -e "\n\nChecking proxysql config and stats..."
 sleep 10
 docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select * from runtime_mysql_servers;"

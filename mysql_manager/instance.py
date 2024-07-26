@@ -33,10 +33,6 @@ class MysqlInstance(BaseManager):
         # self.seconds_behind_master: int = 0 
         # self.executed_gtid_set: str = "" 
     
-    def _log(self, msg) -> None:
-        print("host: " + self.host + ", " + msg)
- 
-    
     def user_exists(self, user: str, grants: list[str]) -> bool: 
         db = self._get_db()
         if db is None: 
@@ -61,7 +57,7 @@ class MysqlInstance(BaseManager):
     def create_monitoring_user(self, password: str):
         db = self._get_db()
         if db is None: 
-            print("Could not connect to mysql")
+            self._log("Could not connect to mysql")
             raise MysqlConnectionException()
     
         with db: 
@@ -86,8 +82,8 @@ class MysqlInstance(BaseManager):
     def create_new_user(self, user: str, password: str, grants: list[str]):
         db = self._get_db()
         if db is None: 
-            print("Could not connect to mysql")
-            return -1
+            self._log("Could not connect to mysql")
+            raise MysqlConnectionException()
         
         with db: 
             with db.cursor() as cursor:
@@ -104,13 +100,13 @@ class MysqlInstance(BaseManager):
                     self._log(str(result))
                 except Exception as e: 
                     self._log(str(e))
-                    return -1
+                    raise e
     
     def find_config_problems(self) -> list[MysqlReplicationProblem]: 
         db = self._get_db()
         if db is None: 
-            print("Could not connect to mysql")
-            return [-1]
+            self._log("Could not connect to mysql")
+            raise MysqlConnectionException()
         
         with db: 
             with db.cursor() as cursor:
@@ -119,10 +115,9 @@ class MysqlInstance(BaseManager):
 select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.enforce_gtid_consistency
 ''')
                     result = cursor.fetchone()
-                    print(result)
                 except Exception as e: 
-                    print(e)
-                    return [-1]
+                    self._log(str(e))
+                    raise e
         
         problems = []
         if result["@@global.log_bin"] != 1: 
@@ -170,19 +165,19 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
         problems = []
         if status["Replica_IO_Running"] != "Yes":
             problems.append(MysqlReplicationProblem.IO_THREAD_NOT_RUNNING)
-            print("Replica_IO_State: " + str(status["Replica_IO_State"]))
+            self._log("Replica_IO_State: " + str(status["Replica_IO_State"]))
         if status["Replica_SQL_Running"] != "Yes":
             problems.append(MysqlReplicationProblem.SQL_THREAD_NOT_RUNNING)
-            print("Replica_SQL_Running_State: " + str(status["Replica_SQL_Running_State"]))
+            self._log("Replica_SQL_Running_State: " + str(status["Replica_SQL_Running_State"]))
         if status["Last_Errno"] != 0 and status["Last_Error"] != "":
             problems.append(MysqlReplicationProblem.LAST_ERROR)
-            print("Last_Errno: " + str(status["Last_Errno"]) + ", Last_Error: " + str(status["Last_Error"]))
+            self._log("Last_Errno: " + str(status["Last_Errno"]) + ", Last_Error: " + str(status["Last_Error"]))
         if status["Last_IO_Errno"] != 0 and status["Last_IO_Error"] != "":
             problems.append(MysqlReplicationProblem.IO_ERROR)
             self._log("Last_IO_Error_Timestamp: " + str(status["Last_IO_Error_Timestamp"]) + ", Last_IO_Errno: " + str(status["Last_IO_Errno"]) + ", Last_IO_Error: " + str(status["Last_IO_Error"]))
         if status["Last_SQL_Errno"] != 0 and status["Last_SQL_Error"] != "":
             problems.append(MysqlReplicationProblem.SQL_ERROR)
-            print("Last_SQL_Error_Timestamp: " + str(status["Last_SQL_Error_Timestamp"]) + ", Last_SQL_Errno: " + str(status["Last_SQL_Errno"]) + ", Last_SQL_Error: " + str(status["Last_SQL_Error"]))
+            self._log("Last_SQL_Error_Timestamp: " + str(status["Last_SQL_Error_Timestamp"]) + ", Last_SQL_Errno: " + str(status["Last_SQL_Errno"]) + ", Last_SQL_Error: " + str(status["Last_SQL_Error"]))
         if status["Seconds_Behind_Source"] is not None and status["Seconds_Behind_Source"] > 60:
             problems.append(MysqlReplicationProblem.REPLICATION_LAG_HIGH)
             self._log("Seconds_Behind_Source: " + str(status["Seconds_Behind_Source"]))
@@ -232,11 +227,11 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
         repl_status = self.get_replica_status()
         if repl_status is not None and repl_status["Replica_IO_Running"] == "Yes" and repl_status["Replica_SQL_Running"] == "Yes": 
             self._log("Replication is running")
-            raise MysqlReplicationException()
+            return
 
         db = self._get_db()
         if db is None: 
-            print("Could not connect to mysql")
+            self._log("Could not connect to mysql")
             raise MysqlConnectionException()
         
         with db: 
@@ -256,7 +251,7 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
     def add_pitr_event(self, minute_intervals):
         db = self._get_db()
         if db is None:
-            print("Could not connect to mysql")
+            self._log("Could not connect to mysql")
             raise MysqlConnectionException()
 
         with db:

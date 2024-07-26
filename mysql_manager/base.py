@@ -9,7 +9,7 @@ class BaseManager:
         self.password = password
     
     def _log(self, msg) -> None:
-        print("host: " + self.host + ", " + msg)
+        print("Host: " + self.host + ", " + msg)
  
     def _get_db(self):
         db = None 
@@ -22,15 +22,15 @@ class BaseManager:
                 cursorclass=pymysql.cursors.DictCursor,
             )
         except Exception as e: 
-            print(e)
+            self._log(str(e))
             return None
         return db 
 
     def get_info(self, command: str) -> dict: 
         db = self._get_db()
         if db is None: 
-            print("Could not connect to mysql")
-            raise MysqlConnectionException
+            self._log("Could not connect to mysql")
+            raise MysqlConnectionException()
         
         result = None 
         with db: 
@@ -38,9 +38,8 @@ class BaseManager:
                 try: 
                     cursor.execute(command)
                     result = cursor.fetchone()
-                    # print(result)
                 except Exception as e:
-                    print(e) 
+                    self._log(str(e)) 
                     raise e
                 
         return result
@@ -48,13 +47,14 @@ class BaseManager:
     def ping(self) -> bool:
         db = self._get_db()
         if db is None: 
-            print("Could not connect to server")
-            raise MysqlConnectionException
+            self._log("Could not connect to server")
+            raise MysqlConnectionException()
         
         with db:
             try: 
                 db.ping(reconnect=True)
-            except: 
-                return False 
+            except Exception as e: 
+                self._log(str(e))
+                raise e 
         return True 
 

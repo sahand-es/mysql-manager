@@ -5,6 +5,7 @@ import click
 
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.proxysql import ProxySQL
+from mysql_manager.cluster import ClusterManager
 
 current_dir = os.getcwd()
 BASE_DIR = os.path.abspath(os.path.join(current_dir, os.pardir))
@@ -77,6 +78,14 @@ def create_user(ctx, host, user, password, roles):
     print(f"Creating user '{user}' with roles {roles.split(',')} on host '{host}'")
     ins = MysqlInstance(host, *get_instance_from_config(config, host))
     ins.create_new_user(user, password, roles.split(','))
+
+
+@mysql.command()
+@click.option('--config-file', help='Config file of Cluster Manager', required=False, default="/etc/mm/config.ini")
+def start_cluster(config_file):
+    print("Starting cluster...")
+    clm = ClusterManager(config_file)
+    clm.start()
 
 
 @mysql.command()

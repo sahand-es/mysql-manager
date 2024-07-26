@@ -1,5 +1,6 @@
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.proxysql import ProxySQL
+from mysql_manager.cluster import ClusterManager
 
 def test_normal_info_wrong():
     tests = [
@@ -59,8 +60,14 @@ def test_proxysql():
     px = ProxySQL(**tests[2])
     print("Pinged: " + str(px.ping()))
 
+def test_cluster_read_config():
+    clm = ClusterManager("./tests/config/mm-config-mysql-2.ini")
+    clm.read_config_file()
+    print(clm.src)
+    print(clm.repl)
+    print(clm.proxysqls)
 
 if __name__ == "__main__": 
     # test_normal_info_wrong()
     # test_timeout()
-    test_replication()
+    test_cluster_read_config()

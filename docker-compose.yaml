@@ -2,7 +2,8 @@ version: '3'
 
 services:
   mm:
-    image: registry.hamdocker.ir/public/mysql-manager:b212be8e
+    # image: registry.hamdocker.ir/public/mysql-manager:b212be8e
+    build: .
     command: sleep inf
     environment: 
       MYSQL_S1_HOST: mysql-s1
@@ -14,7 +15,8 @@ services:
       PROXYSQL_PASSWORD: pwd 
       PROXYSQL_MON_PASSWORD: pwd
     volumes:
-      - '.:/app:rw'
+    - './tests/config/mm-config-mysql-2.ini:/etc/mm/config.ini'
+    - './tests/config/mm-config-mysql-1.ini:/etc/mm/config-mysql-1.ini'
   mysql-s1:
     image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
     environment:

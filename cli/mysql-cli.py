@@ -79,12 +79,42 @@ def create_user(ctx, host, user, password, roles):
     ins = MysqlInstance(host, *get_instance_from_config(config, host))
     ins.create_new_user(user, password, roles.split(','))
 
+def create_config_file_from_env(nodes_count: int):
+    config = ConfigParser()
+    config.add_section("mysql-s1")
+    config.set("mysql-s1", "host", os.getenv("MYSQL_S1_HOST"))
+    config.set("mysql-s1", "user", "root")
+    config.set("mysql-s1", "password", os.getenv("MYSQL_ROOT_PASSWORD"))
+    if nodes_count == 2:
+        config.add_section("mysql-s2")
+        config.set("mysql-s2", "host", os.getenv("MYSQL_S2_HOST"))
+        config.set("mysql-s2", "user", "root")
+        config.set("mysql-s2", "password", os.getenv("MYSQL_ROOT_PASSWORD"))
+    
+    config.add_section("proxysql-1")
+    config.set("proxysql-1", "host", os.getenv("PROXYSQL_HOST"))
+    config.set("proxysql-1", "user", "radmin")
+    config.set("proxysql-1", "password", os.getenv("PROXYSQL_PASSWORD"))
+
+    config.add_section("users")
+    config.set("users", "repl_password", os.getenv("MYSQL_REPL_PASSWORD"))
+    config.set("users", "exporter_password", os.getenv("MYSQL_EXPORTER_PASSWORD"))
+    config.set("users", "proxysql_mon_password", os.getenv("PROXYSQL_MON_PASSWORD"))
+    config.set("users", "nonpriv_user", os.getenv("MYSQL_NONPRIV_USER"))
+    config.set("users", "nonpriv_password", os.getenv("MYSQL_NONPRIV_PASSWORD"))
+
+    filename = "/etc/mm/config.ini"
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, "w") as configfile:
+        config.write(configfile)
 
 @mysql.command()
-@click.option('--config-file', help='Config file of Cluster Manager', required=False, default="/etc/mm/config.ini")
-def start_cluster(config_file):
+# @click.option('--config-file', help='Config file of Cluster Manager', required=False, default="/etc/mm/config.ini")
+@click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
+def start_cluster(nodes: int):
+    create_config_file_from_env(nodes_count=nodes)
     print("Starting cluster...")
-    clm = ClusterManager(config_file)
+    clm = ClusterManager()
     clm.start()
 
 

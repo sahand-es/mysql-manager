@@ -9,14 +9,16 @@ services:
       MYSQL_S1_HOST: mysql-s1
       MYSQL_S2_HOST: mysql-s2
       MYSQL_ROOT_PASSWORD: root
+      MYSQL_NONPRIV_USER: dbadmin
+      MYSQL_NONPRIV_PASSWORD: password
       MYSQL_REPL_PASSWORD: repl
       MYSQL_EXPORTER_PASSWORD: exporter
       PROXYSQL_HOST: proxysql
       PROXYSQL_PASSWORD: pwd 
       PROXYSQL_MON_PASSWORD: pwd
-    volumes:
-    - './tests/config/mm-config-mysql-2.ini:/etc/mm/config.ini'
-    - './tests/config/mm-config-mysql-1.ini:/etc/mm/config-mysql-1.ini'
+    # volumes:
+    # - './tests/config/mm-config-mysql-2.ini:/etc/mm/config.ini'
+    # - './tests/config/mm-config-mysql-1.ini:/etc/mm/config-mysql-1.ini'
   mysql-s1:
     image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
     environment:

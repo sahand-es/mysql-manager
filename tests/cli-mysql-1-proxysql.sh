@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # docker compose exec mm bash /app/scripts/start-simple-with-proxysql-cli.sh
-docker compose exec mm python /app/cli/mysql-cli.py mysql start-cluster --config-file "/etc/mm/config-mysql-1.ini"
+docker compose exec mm python /app/cli/mysql-cli.py mysql start-cluster
 
 echo -e "\n\nCreating db in master..."
 docker compose exec mysql-s1 mysql -udbadmin -ppassword -h proxysql -e "create database sales; use sales; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');"

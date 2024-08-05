@@ -4,8 +4,10 @@ import time
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.proxysql import ProxySQL
 
-DEFAULT_CONFIG_PATH = "/etc/mm/config.ini"
-DEFAULT_DATABASE = "hamdb"
+from mysql_manager.constants import (
+    DEFAULT_CONFIG_PATH,
+    DEFAULT_DATABASE,
+)
 
 class ClusterManager: 
     def __init__(self, config_file: str=DEFAULT_CONFIG_PATH):
@@ -57,11 +59,12 @@ class ClusterManager:
         self.src.create_new_user(
             "replica", self.users["repl_password"], ["REPLICATION SLAVE"]
         )
+        self.src.create_database(DEFAULT_DATABASE)
         self.src.create_monitoring_user(self.users["exporter_password"])
         self.src.create_nonpriv_user(self.users["nonpriv_user"], self.users["nonpriv_password"])
         self.src.create_new_user("proxysql", self.users["proxysql_mon_password"], ["USAGE", "REPLICATION CLIENT"])
 
-        self.src.create_database(DEFAULT_DATABASE)
+        
 
         self.proxysqls[0].initialize_setup()
         self.proxysqls[0].add_backend(self.src, 1, True)

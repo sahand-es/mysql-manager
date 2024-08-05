@@ -8,7 +8,7 @@ from mysql_manager.enums import (
 
 from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException, MysqlAddPITREventException
 from mysql_manager.base import BaseManager
-from cluster import DEFAULT_DATABASE
+from mysql_manager.constants import DEFAULT_DATABASE
 
 class MysqlInstance(BaseManager):
     def __init__(self, host: str, user: str, password: str, port: int=3306) -> None:
@@ -115,11 +115,11 @@ class MysqlInstance(BaseManager):
                         f"GRANT ROLE_ADMIN ON *.* TO '{user}'@'%' WITH GRANT OPTION"
                     )
                     cursor.execute(
-                        f"GRANT ALL PRIVILEGES ON '{DEFAULT_DATABASE}'.* TO '{user}'@'%' WITH GRANT OPTION"
+                        f"GRANT ALL PRIVILEGES ON {DEFAULT_DATABASE}.* TO '{user}'@'%' WITH GRANT OPTION"
                     )
                     for db in ["mysql", "sys", "performance_schema"]:
                         cursor.execute(
-                            f"GRANT SELECT ON '{db}'.* TO '{user}'@'%' WITH GRANT OPTION"
+                            f"GRANT SELECT ON {db}.* TO '{user}'@'%' WITH GRANT OPTION"
                         )
                     result = cursor.fetchall()
                     self._log(str(result))

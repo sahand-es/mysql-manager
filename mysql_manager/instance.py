@@ -8,6 +8,7 @@ from mysql_manager.enums import (
 
 from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException, MysqlAddPITREventException
 from mysql_manager.base import BaseManager
+from cluster import DEFAULT_DATABASE
 
 class MysqlInstance(BaseManager):
     def __init__(self, host: str, user: str, password: str, port: int=3306) -> None:
@@ -90,6 +91,37 @@ class MysqlInstance(BaseManager):
                     )
                     cursor.execute("FLUSH PRIVILEGES")
                     result = cursor.fetchone()
+                    self._log(str(result))
+                except Exception as e: 
+                    self._log(str(e))
+                    raise e
+
+    def create_nonpriv_user(self, user: str, password: str): 
+        db = self._get_db()
+        if db is None: 
+            self._log("Could not connect to mysql")
+            raise MysqlConnectionException()
+
+        with db: 
+            with db.cursor() as cursor:
+                try: 
+                    cursor.execute(
+                        f"CREATE USER IF NOT EXISTS '{user}'@'%' IDENTIFIED WITH mysql_native_password BY '{password}'"
+                    )
+                    cursor.execute(
+                        f"GRANT CREATE, DROP, PROCESS, SHOW DATABASES, REPLICATION CLIENT, CREATE USER, CREATE ROLE, DROP ROLE ON *.* TO '{user}'@'%' WITH GRANT OPTION"
+                    )
+                    cursor.execute(
+                        f"GRANT ROLE_ADMIN ON *.* TO '{user}'@'%' WITH GRANT OPTION"
+                    )
+                    cursor.execute(
+                        f"GRANT ALL PRIVILEGES ON '{DEFAULT_DATABASE}'.* TO '{user}'@'%' WITH GRANT OPTION"
+                    )
+                    for db in ["mysql", "sys", "performance_schema"]:
+                        cursor.execute(
+                            f"GRANT SELECT ON '{db}'.* TO '{user}'@'%' WITH GRANT OPTION"
+                        )
+                    result = cursor.fetchall()
                     self._log(str(result))
                 except Exception as e: 
                     self._log(str(e))

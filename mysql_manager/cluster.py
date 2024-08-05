@@ -58,8 +58,7 @@ class ClusterManager:
             "replica", self.users["repl_password"], ["REPLICATION SLAVE"]
         )
         self.src.create_monitoring_user(self.users["exporter_password"])
-        ## TODO: write a function for nonpriv user creation
-        self.src.create_new_user(self.users["nonpriv_user"], self.users["nonpriv_password"], ["ALL"])
+        self.src.create_nonpriv_user(self.users["nonpriv_user"], self.users["nonpriv_password"])
         self.src.create_new_user("proxysql", self.users["proxysql_mon_password"], ["USAGE", "REPLICATION CLIENT"])
 
         self.src.create_database(DEFAULT_DATABASE)

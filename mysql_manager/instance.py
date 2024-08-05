@@ -54,6 +54,22 @@ class MysqlInstance(BaseManager):
         
         return True
     
+    def create_database(self, name: str): 
+        db = self._get_db()
+        if db is None: 
+            self._log("Could not connect to mysql")
+            raise MysqlConnectionException()
+
+        with db: 
+            with db.cursor() as cursor:
+                try: 
+                    cursor.execute(f"CREATE DATABASE IF NOT EXISTS {name}")
+                    result = cursor.fetchone()
+                    self._log(str(result))
+                except Exception as e: 
+                    self._log(str(e))
+                    raise e
+        
     def create_monitoring_user(self, password: str):
         db = self._get_db()
         if db is None: 
@@ -64,7 +80,7 @@ class MysqlInstance(BaseManager):
             with db.cursor() as cursor:
                 try: 
                     cursor.execute(
-                        f"CREATE USER 'exporter'@'%' IDENTIFIED WITH mysql_native_password BY '{password}' WITH MAX_USER_CONNECTIONS 3"
+                        f"CREATE USER IF NOT EXISTS 'exporter'@'%' IDENTIFIED WITH mysql_native_password BY '{password}' WITH MAX_USER_CONNECTIONS 3"
                     )
                     cursor.execute(
                         "GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'exporter'@'%'"
@@ -89,7 +105,7 @@ class MysqlInstance(BaseManager):
             with db.cursor() as cursor:
                 try: 
                     cursor.execute(
-                        f"CREATE USER '{user}'@'%' IDENTIFIED WITH mysql_native_password BY '{password}'"
+                        f"CREATE USER IF NOT EXISTS '{user}'@'%' IDENTIFIED WITH mysql_native_password BY '{password}'"
                     )
                     grants_command = ",".join(grants)
                     cursor.execute(

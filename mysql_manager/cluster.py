@@ -5,6 +5,7 @@ from mysql_manager.instance import MysqlInstance
 from mysql_manager.proxysql import ProxySQL
 
 DEFAULT_CONFIG_PATH = "/etc/mm/config.ini"
+DEFAULT_DATABASE = "hamdb"
 
 class ClusterManager: 
     def __init__(self, config_file: str=DEFAULT_CONFIG_PATH):
@@ -13,6 +14,9 @@ class ClusterManager:
         self.proxysqls: list[ProxySQL] = [] 
         self.users: dict = {} 
         self.config_file = config_file
+
+    def _log(self, msg) -> None:
+        print(msg)
         
     def read_config_file(self):
         config = ConfigParser()
@@ -43,7 +47,7 @@ class ClusterManager:
         if self.repl is not None:
             self.repl.ping()
         self.proxysqls[0].ping()
-        
+
     def start(self):
         self.read_config_file()
         
@@ -57,6 +61,8 @@ class ClusterManager:
         ## TODO: write a function for nonpriv user creation
         self.src.create_new_user(self.users["nonpriv_user"], self.users["nonpriv_password"], ["ALL"])
         self.src.create_new_user("proxysql", self.users["proxysql_mon_password"], ["USAGE", "REPLICATION CLIENT"])
+
+        self.src.create_database(DEFAULT_DATABASE)
 
         self.proxysqls[0].initialize_setup()
         self.proxysqls[0].add_backend(self.src, 1, True)

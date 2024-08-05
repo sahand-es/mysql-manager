@@ -1,5 +1,9 @@
 #!/bin/bash
 
+echo "Creating servers..."
+docker compose down
+docker compose up -d 
+sleep 30
 # docker compose exec mm bash /app/scripts/start-replication-with-proxysql-cli.sh
 docker compose exec mm python /app/cli/mysql-cli.py mysql start-cluster --nodes 2
 
@@ -19,6 +23,11 @@ docker compose exec mysql-s2 mysql -uroot -proot -e "select * from sales.t1;"
 echo -e "\n\nChecking events in master..."
 docker compose exec mysql-s1 mysql -uroot -proot -e "USE mysql; SHOW EVENTS;"
 
+echo -e "\n\nChecking default user..."
+docker compose exec mysql-s1 mysql -uroot -proot -e "SELECT user FROM mysql.user"
+
+echo -e "\n\nChecking default database..."
+docker compose exec mysql-s1 mysql -uroot -proot -e "show databases"
 
 echo -e "\n\nChecking proxysql config and stats..."
 sleep 10
@@ -29,3 +38,7 @@ docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select 
 
 echo -e "\n\nChecking metrics from exporter..."
 curl localhost:9104/metrics | grep mysql_up
+
+echo -e "\n\nDestroying servers..."
+sleep 5
+docker compose down 

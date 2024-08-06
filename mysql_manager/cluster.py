@@ -3,7 +3,10 @@ import time
 
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.proxysql import ProxySQL
-
+from mysql_manager.enums import (
+    MysqlReplicationProblem,
+    MysqlStatus,
+)
 from mysql_manager.constants import (
     DEFAULT_CONFIG_PATH,
     DEFAULT_DATABASE,
@@ -16,6 +19,7 @@ class ClusterManager:
         self.proxysqls: list[ProxySQL] = [] 
         self.users: dict = {} 
         self.config_file = config_file
+        self.read_config_file()
 
     def _log(self, msg) -> None:
         print(msg)
@@ -38,6 +42,30 @@ class ClusterManager:
         if config.has_section("mysql-s2"): 
             self.repl = MysqlInstance(**config["mysql-s2"])
 
+    def get_cluster_status(self) -> dict: 
+        cluster_status = {
+            "master": MysqlStatus.UP.value,
+            "replica": MysqlStatus.UP.value,
+        }
+
+        try: 
+            self.src.ping()
+        except Exception: 
+            cluster_status["master"] = MysqlStatus.DOWN.value
+
+        try:
+            self.repl.ping()
+            problems = self.repl.find_replication_problems()
+            if ( 
+                MysqlReplicationProblem.SQL_THREAD_NOT_RUNNING.value in problems 
+                or MysqlReplicationProblem.IO_THREAD_NOT_RUNNING.value in problems
+            ):
+                cluster_status["replica"] = MysqlStatus.DOWN.value
+        except:
+            cluster_status["replica"] = MysqlStatus.DOWN.value
+        
+        return cluster_status
+
     def start_mysql_replication(self):
         ## TODO: reset replication all for both of them 
         self.src.add_replica(self.repl)
@@ -51,8 +79,6 @@ class ClusterManager:
         self.proxysqls[0].ping()
 
     def start(self):
-        self.read_config_file()
-        
         self.check_servers_up()
         
         self.src.add_pitr_event(15)

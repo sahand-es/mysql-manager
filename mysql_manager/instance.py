@@ -46,7 +46,6 @@ class MysqlInstance(BaseManager):
                 try: 
                     cursor.execute(f"SHOW GRANTS FOR '{user}'")
                     result = cursor.fetchone()
-                    self._log(str(result))
                 except pymysql.err.OperationalError: 
                     return False
                 except Exception as e: 
@@ -65,8 +64,7 @@ class MysqlInstance(BaseManager):
             with db.cursor() as cursor:
                 try: 
                     cursor.execute(f"CREATE DATABASE IF NOT EXISTS {name}")
-                    result = cursor.fetchone()
-                    self._log(str(result))
+                    cursor.fetchone()
                 except Exception as e: 
                     self._log(str(e))
                     raise e
@@ -90,8 +88,6 @@ class MysqlInstance(BaseManager):
                         "GRANT SELECT ON performance_schema.* TO 'exporter'@'%'"
                     )
                     cursor.execute("FLUSH PRIVILEGES")
-                    result = cursor.fetchone()
-                    self._log(str(result))
                 except Exception as e: 
                     self._log(str(e))
                     raise e
@@ -121,8 +117,6 @@ class MysqlInstance(BaseManager):
                         cursor.execute(
                             f"GRANT SELECT ON {db}.* TO '{user}'@'%' WITH GRANT OPTION"
                         )
-                    result = cursor.fetchall()
-                    self._log(str(result))
                 except Exception as e: 
                     self._log(str(e))
                     raise e
@@ -144,8 +138,6 @@ class MysqlInstance(BaseManager):
                         f"GRANT {grants_command} ON *.* TO '{user}'@'%'"
                     )
                     cursor.execute("FLUSH PRIVILEGES")
-                    result = cursor.fetchone()
-                    self._log(str(result))
                 except Exception as e: 
                     self._log(str(e))
                     raise e
@@ -169,13 +161,13 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
         
         problems = []
         if result["@@global.log_bin"] != 1: 
-            problems.append(MysqlConfigProblem.LOGBIN_NOT_ENABLED)
+            problems.append(MysqlConfigProblem.LOGBIN_NOT_ENABLED.value)
         if result["@@global.binlog_format"] != "ROW":
-            problems.append(MysqlConfigProblem.LOGBIN_FORMAT)
+            problems.append(MysqlConfigProblem.LOGBIN_FORMAT.value)
         if result["@@global.gtid_mode"] != "ON": 
-            problems.append(MysqlConfigProblem.GTID_NOT_ENABLED)
+            problems.append(MysqlConfigProblem.GTID_NOT_ENABLED.value)
         if result["@@global.enforce_gtid_consistency"] != "ON":
-            problems.append(MysqlConfigProblem.GTID_CONSISTENCY_NOT_ENABLED)
+            problems.append(MysqlConfigProblem.GTID_CONSISTENCY_NOT_ENABLED.value)
         
         return problems         
 
@@ -206,32 +198,25 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
     def find_replication_problems(self) -> list[MysqlReplicationProblem]:
         status = self.get_replica_status()
         if status is None: 
-            return [MysqlReplicationProblem.NOT_SLAVE]
+            return [MysqlReplicationProblem.NOT_SLAVE.value]
         
         # values of these two can be used in future: 'Replica_IO_State', 'Replica_SQL_Running_State'
         ## TODO: check if keys exist in `status`
         problems = []
         if status["Replica_IO_Running"] != "Yes":
-            problems.append(MysqlReplicationProblem.IO_THREAD_NOT_RUNNING)
-            self._log("Replica_IO_State: " + str(status["Replica_IO_State"]))
+            problems.append(MysqlReplicationProblem.IO_THREAD_NOT_RUNNING.value)
         if status["Replica_SQL_Running"] != "Yes":
-            problems.append(MysqlReplicationProblem.SQL_THREAD_NOT_RUNNING)
-            self._log("Replica_SQL_Running_State: " + str(status["Replica_SQL_Running_State"]))
+            problems.append(MysqlReplicationProblem.SQL_THREAD_NOT_RUNNING.value)
         if status["Last_Errno"] != 0 and status["Last_Error"] != "":
-            problems.append(MysqlReplicationProblem.LAST_ERROR)
-            self._log("Last_Errno: " + str(status["Last_Errno"]) + ", Last_Error: " + str(status["Last_Error"]))
+            problems.append(MysqlReplicationProblem.LAST_ERROR.value)
         if status["Last_IO_Errno"] != 0 and status["Last_IO_Error"] != "":
-            problems.append(MysqlReplicationProblem.IO_ERROR)
-            self._log("Last_IO_Error_Timestamp: " + str(status["Last_IO_Error_Timestamp"]) + ", Last_IO_Errno: " + str(status["Last_IO_Errno"]) + ", Last_IO_Error: " + str(status["Last_IO_Error"]))
+            problems.append(MysqlReplicationProblem.IO_ERROR.value)
         if status["Last_SQL_Errno"] != 0 and status["Last_SQL_Error"] != "":
-            problems.append(MysqlReplicationProblem.SQL_ERROR)
-            self._log("Last_SQL_Error_Timestamp: " + str(status["Last_SQL_Error_Timestamp"]) + ", Last_SQL_Errno: " + str(status["Last_SQL_Errno"]) + ", Last_SQL_Error: " + str(status["Last_SQL_Error"]))
+            problems.append(MysqlReplicationProblem.SQL_ERROR.value)
         if status["Seconds_Behind_Source"] is not None and status["Seconds_Behind_Source"] > 60:
-            problems.append(MysqlReplicationProblem.REPLICATION_LAG_HIGH)
-            self._log("Seconds_Behind_Source: " + str(status["Seconds_Behind_Source"]))
+            problems.append(MysqlReplicationProblem.REPLICATION_LAG_HIGH.value)
         if status["Auto_Position"] != 1:
-            problems.append(MysqlReplicationProblem.AUTO_POSITION_DISABLED)
-            self._log("Auto_Position: " + str(status["Auto_Position"]))
+            problems.append(MysqlReplicationProblem.AUTO_POSITION_DISABLED.value)
         
         return problems
 
@@ -309,8 +294,6 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
                     cursor.execute(
                         f"CREATE EVENT pitr ON SCHEDULE EVERY {minute_intervals} MINUTE DO FLUSH BINARY LOGS;"
                     )
-                    result = cursor.fetchone()
-                    self._log(str(result))
                 except Exception as e:
                     self._log(str(e))
                     raise MysqlAddPITREventException()

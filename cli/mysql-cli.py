@@ -80,6 +80,10 @@ def create_user(ctx, host, user, password, roles):
     ins.create_new_user(user, password, roles.split(','))
 
 def create_config_file_from_env(nodes_count: int):
+    filename = "/etc/mm/config.ini"
+    if os.path.isfile(filename):
+        return
+    
     config = ConfigParser()
     config.add_section("mysql-s1")
     config.set("mysql-s1", "host", os.getenv("MYSQL_S1_HOST"))
@@ -103,7 +107,6 @@ def create_config_file_from_env(nodes_count: int):
     config.set("users", "nonpriv_user", os.getenv("MYSQL_NONPRIV_USER"))
     config.set("users", "nonpriv_password", os.getenv("MYSQL_NONPRIV_PASSWORD"))
 
-    filename = "/etc/mm/config.ini"
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, "w") as configfile:
         config.write(configfile)
@@ -117,6 +120,14 @@ def start_cluster(nodes: int):
     clm = ClusterManager()
     clm.start()
 
+@mysql.command()
+@click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
+def get_cluster_status(nodes: int):
+    create_config_file_from_env(nodes_count=nodes)
+    clm = ClusterManager()
+    cluster_status = clm.get_cluster_status()
+    print("master="+cluster_status["master"])
+    print("replica="+cluster_status["replica"])
 
 @mysql.command()
 @click.option('--master', help='Master MySQL host for replication')

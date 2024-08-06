@@ -38,6 +38,10 @@ docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select 
 echo -e "\n\nChecking metrics from exporter..."
 curl localhost:9105/metrics | grep mysql_up
 
+echo -e "\n\nTesting cluster status..."
+docker compose down mysql-s1 
+docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status
+
 echo -e "\n\nDestroying servers..."
 sleep 5
 docker compose down 

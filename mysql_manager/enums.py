@@ -1,5 +1,9 @@
 from enum import Enum
 
+class MysqlStatus(Enum):
+    UP = "up"
+    DOWN = "down"
+
 class MysqlReplicationProblem(Enum):
     IO_THREAD_NOT_RUNNING = 1 
     SQL_THREAD_NOT_RUNNING = 2 

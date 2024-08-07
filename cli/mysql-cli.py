@@ -242,6 +242,26 @@ def add_backend(ctx, mysql_host, proxysql_host, read_weight, is_writer):
     px.add_backend(mysql_instance, read_weight, is_writer)
 
 
+@proxysql.command()
+@click.option('-h', '--host', help='Proxysql host')
+@click.option('--on', is_flag=True, help='Specify if read write should be split')
+@click.option('--off', is_flag=True, help='Specify if read write should NOT be split')
+@click.pass_context
+def split_rw(ctx, host, on, off):
+    if on == off:
+        raise Exception("Cannot have both on and off options at the same time")
+    config = ctx.obj['CONFIG']
+    px = ProxySQL(
+        host,
+        *get_instance_from_config(config, host)[:2],
+        '',
+        '',
+        '',
+        '',
+    )
+    res = px.split_read_write(True if on else False)
+
+
 @mysql.command()
 @click.option('-h', '--host', help='MySQL host')
 @click.pass_context

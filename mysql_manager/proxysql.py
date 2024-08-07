@@ -2,6 +2,7 @@ from mysql_manager.instance import MysqlInstance
 from mysql_manager.base import BaseManager
 from mysql_manager.exceptions import MysqlConnectionException
 
+
 ## TODO: move mysql related passwords to initialize function
 class ProxySQL(BaseManager): 
     def __init__(
@@ -75,5 +76,26 @@ class ProxySQL(BaseManager):
                     self._log(str(e))
                     raise e
 
+    def split_read_write(self, is_active):
+        db = self._get_db()
+        if db is None:
+            print("Could not connect to proxysql")
+            raise MysqlConnectionException
 
+        with db:
+            with db.cursor() as cursor:
+                try:
+                    cursor.execute("SELECT * FROM mysql_query_rules;")
+                    result = cursor.fetchone()
+                    if is_active and result is None:
+                        cursor.execute("INSERT INTO mysql_query_rules (active, match_digest, destination_hostgroup, apply) VALUES (1, '^SELECT.*', 1, 0);")
+                        result = cursor.fetchone()
+                        self._log(str(result))
+                    elif not is_active and result is not None:
+                        cursor.execute("DELETE FROM mysql_query_rules;")
+                        result = cursor.fetchone()
+                        self._log(str(result))
 
+                except Exception as e:
+                    self._log(str(e))
+                    raise e

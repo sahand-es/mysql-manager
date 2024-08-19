@@ -25,12 +25,14 @@ services:
       MYSQL_ROOT_PASSWORD: 'root'
     volumes:
       - './tests/config/mysql-s1.cnf:/etc/mysql/conf.d/mysql.cnf'
+    restart: always
   mysql-s2:
     image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
     environment:
       MYSQL_ROOT_PASSWORD: 'root'
     volumes:
       - './tests/config/mysql-s2.cnf:/etc/mysql/conf.d/mysql.cnf'
+    restart: always
   mysql-exporter-s1: 
     image: hub.hamdocker.ir/prom/mysqld-exporter:v0.15.1
     command: "--config.my-cnf=/etc/my.cnf"

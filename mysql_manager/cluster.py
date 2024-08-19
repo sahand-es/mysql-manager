@@ -1,15 +1,19 @@
 from configparser import ConfigParser
 import time 
 
+from pymysql.err import OperationalError
+
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.proxysql import ProxySQL
 from mysql_manager.enums import (
     MysqlReplicationProblem,
     MysqlStatus,
 )
+from mysql_manager.exceptions import MysqlConnectionException
 from mysql_manager.constants import (
     DEFAULT_CONFIG_PATH,
     DEFAULT_DATABASE,
+    RETRY_WAIT_SECONDS,
 )
 
 class ClusterManager: 
@@ -72,11 +76,42 @@ class ClusterManager:
         self.repl.set_master(self.src)
         self.repl.start_replication("replica", self.users["repl_password"])
     
-    def check_servers_up(self): 
-        self.src.ping()
-        if self.repl is not None:
-            self.repl.ping()
-        self.proxysqls[0].ping()
+    def check_servers_up(self, retry: int=1): 
+        is_ok = False
+        for _ in range(retry):
+            try: 
+                self.src.ping()
+                if self.repl is not None:
+                    self.repl.ping()
+                self.proxysqls[0].ping()
+            except Exception as e:
+                time.sleep(RETRY_WAIT_SECONDS)
+                continue
+            is_ok = True
+            break
+        
+        if is_ok == False:
+            raise MysqlConnectionException()
+
+    def add_replica_to_master(self):
+        self.check_servers_up(retry=10)
+        self.src.install_plugin("clone", "mysql_clone.so")
+        self.repl.install_plugin("clone", "mysql_clone.so")
+
+        self.repl.run_command(
+            f"set global clone_valid_donor_list='{self.src.host}:3306'"
+        )
+        self.repl.run_command("set global super_read_only=0")
+        try:
+            self.repl.run_command(
+                f"CLONE INSTANCE FROM '{self.src.user}'@'{self.src.host}':3306 IDENTIFIED BY '{self.src.password}'"
+            )
+        except OperationalError as o:
+            self._log(str(o))
+
+        self.check_servers_up(retry=10)
+        self.start_mysql_replication()
+        self.proxysqls[0].add_backend(self.repl, 1, False)
 
     def start(self):
         self.check_servers_up()

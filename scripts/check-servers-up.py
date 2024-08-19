@@ -27,9 +27,9 @@ status = {"src": "down", "repl": "down", "proxy": "down"}
 src_ping = src.ping()
 repl_ping = repl.ping()
 proxy_ping = px.ping()
-src_command = src.get_info("select 1")
-repl_command = repl.get_info("select 1")
-proxy_command = px.get_info("select 1")
+src_command = src.run_command("select 1")
+repl_command = repl.run_command("select 1")
+proxy_command = px.run_command("select 1")
 # print(proxy_ping, proxy_command)
 
 if src_ping and src_command.get("1", "0") == 1:

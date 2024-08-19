@@ -186,14 +186,22 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
             self.replicas.append(replica)
 
     def get_master_status(self) -> dict:
-        return self.get_info("SHOW MASTER STATUS") 
+        return self.run_command("SHOW MASTER STATUS") 
 
     def get_replica_status(self) -> dict:
-        return self.get_info("SHOW REPLICA STATUS") 
+        return self.run_command("SHOW REPLICA STATUS") 
 
     def is_replica(self) -> bool: 
         ## TODO: what if replica is not available?
         return self.get_replica_status() is not None 
+    
+    def install_plugin(self, plugin_name: str, plugin_file: str): 
+        plugins = self.run_command(f"SELECT * FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME = '{plugin_name}'")
+        if plugins is not None:
+            return
+        
+        command = f"INSTALL PLUGIN {plugin_name} SONAME '{plugin_file}'"
+        self.run_command(command)
 
     def find_replication_problems(self) -> list[MysqlReplicationProblem]:
         status = self.get_replica_status()

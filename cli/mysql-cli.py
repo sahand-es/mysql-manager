@@ -90,8 +90,8 @@ def create_user(ctx, name, user, password, roles):
 
 def create_config_file_from_env(nodes_count: int):
     filename = "/etc/mm/config.ini"
-    if os.path.isfile(filename):
-        return
+    # if os.path.isfile(filename):
+    #     return
     
     config = ConfigParser()
     config.add_section("mysql-s1")
@@ -142,15 +142,22 @@ def get_cluster_status(nodes: int):
 
 
 @mysql.command()
-@click.option('--master', help='Master MySQL name for replication')
-@click.option('--replica', help='Replica MySQL name for replication')
-@click.pass_context
-def add_replica(ctx, master, replica):
-    config = ctx.obj['CONFIG']
-    print(f"Adding replica from master '{master}' to replica '{replica}'")
-    src = MysqlInstance(**get_instance_from_config(config, master))
-    repl = MysqlInstance(**get_instance_from_config(config, master))
-    src.add_replica(repl)
+# @click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
+def add_replica():
+    create_config_file_from_env(nodes_count=2)
+    clm = ClusterManager()
+    clm.add_replica_to_master()
+
+# @mysql.command()
+# @click.option('--master', help='Master MySQL host for replication')
+# @click.option('--replica', help='Replica MySQL host for replication')
+# @click.pass_context
+# def add_replica(ctx, master, replica):
+#     config = ctx.obj['CONFIG']
+#     print(f"Adding replica from master '{master}' to replica '{replica}'")
+#     src = MysqlInstance(master, *get_instance_from_config(config, master))
+#     repl = MysqlInstance(replica, *get_instance_from_config(config, master))
+#     src.add_replica(repl)
 
 
 @mysql.command()
@@ -292,16 +299,16 @@ def ping(ctx, name):
     print(f"Ping Result: {res}")
 
 
-@mysql.command()
-@click.option('-n', '--name', help='MySQL name')
-@click.option('-c', '--command', help='Command to be executed for MySQL')
-@click.pass_context
-def get_info(ctx, name, command):
-    config = ctx.obj['CONFIG']
+# @mysql.command()
+# @click.option('-n', '--name', help='MySQL name')
+# @click.option('-c', '--command', help='Command to be executed for MySQL')
+# @click.pass_context
+# def get_info(ctx, name, command):
+#     config = ctx.obj['CONFIG']
 
-    ins = MysqlInstance(**get_instance_from_config(config, name))
-    res = ins.get_info(command)
-    print(f"Get-Info Result: {res}")
+#     ins = MysqlInstance(host, *get_instance_from_config(config, host))
+#     res = ins.run_command(command)
+#     print(f"Get-Info Result: {res}")
 
 
 @mysql.command()

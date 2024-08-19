@@ -26,7 +26,7 @@ class BaseManager:
             return None
         return db 
 
-    def get_info(self, command: str) -> dict: 
+    def run_command(self, command: str) -> dict: 
         db = self._get_db()
         if db is None: 
             self._log("Could not connect to mysql")

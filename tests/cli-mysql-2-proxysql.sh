@@ -42,20 +42,20 @@ curl localhost:9104/metrics | grep mysql_up
 
 echo -e "\n\nTesting cluster status..."
 echo -e "\n[Case 1]: up, up"
-docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status
+docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2 
 
 echo -e "\n[Case 2]: up, down"
 docker compose exec mysql-s2 mysql -uroot -proot -e "stop replica io_thread"
-docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status
+docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2
 
 echo -e "\n[Case 3]: up, down"
 docker compose exec mysql-s2 mysql -uroot -proot -e "start replica io_thread"
 docker compose exec mysql-s2 mysql -uroot -proot -e "stop replica sql_thread"
-docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status
+docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2
 
 echo -e "\n[Case 4]: up, down"
 docker compose down mysql-s2 
-docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status
+docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2
 sleep 5
 
 echo -e "\n\nDestroying servers..."

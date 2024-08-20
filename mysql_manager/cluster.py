@@ -97,7 +97,7 @@ class ClusterManager:
         self.check_servers_up(retry=10)
         if self.repl is not None: 
             status = self.repl.get_replica_status()
-            if status is not None and status.get("Replica_IO_Running") == "Yes":
+            if status is not None:
                 return
             
         self.src.install_plugin("clone", "mysql_clone.so")

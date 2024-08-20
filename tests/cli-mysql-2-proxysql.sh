@@ -40,6 +40,10 @@ docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select 
 echo -e "\n\nChecking metrics from exporter..."
 curl localhost:9104/metrics | grep mysql_up
 
+
+echo -e "\n\nTesting add replica..."
+docker compose exec mm python /app/cli/mysql-cli.py mysql add-replica
+
 echo -e "\n\nTesting cluster status..."
 echo -e "\n[Case 1]: up, up"
 docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2 

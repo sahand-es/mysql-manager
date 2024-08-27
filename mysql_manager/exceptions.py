@@ -1,3 +1,7 @@
+class ProgramKilled(Exception):
+    def __init__(self) -> None:
+        super().__init__("Got signal from OS to stop")
+
 class MysqlConnectionException(Exception): 
     def __init__(self) -> None:
         super().__init__("Could not connect to MySQL")

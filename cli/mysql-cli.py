@@ -1,12 +1,13 @@
 import os
 from configparser import ConfigParser
 
-import click
+import click, threading, time, signal
 
 from mysql_manager.cluster import ClusterManager
 from mysql_manager.constants import DEFAULT_CONFIG_PATH
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.proxysql import ProxySQL
+from mysql_manager.exceptions import ProgramKilled
 
 current_dir = os.getcwd()
 BASE_DIR = os.path.abspath(os.path.join(current_dir, os.pardir))
@@ -119,6 +120,30 @@ def create_config_file_from_env(nodes_count: int):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, "w") as configfile:
         config.write(configfile)
+
+
+
+def signal_handler(signum, frame):
+    raise ProgramKilled()
+
+@mysql.command()
+def run():
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    create_config_file_from_env(nodes_count=2)
+    print("Starting cluster manager...")
+    clm = ClusterManager()
+    stop_event = threading.Event()
+    tr = threading.Thread(target=clm.run, args=[stop_event])
+    tr.start()
+    while True:
+        try: 
+            time.sleep(100)
+        except ProgramKilled:
+            print("Program killed: running cleanup code")
+            stop_event.set()
+            break
+
 
 
 @mysql.command()

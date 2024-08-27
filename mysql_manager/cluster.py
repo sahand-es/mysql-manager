@@ -1,9 +1,10 @@
 from configparser import ConfigParser
-import time 
+import time, datetime, threading
 
 from pymysql.err import OperationalError
 
 from mysql_manager.instance import MysqlInstance
+from mysql_manager.base import BaseManager
 from mysql_manager.proxysql import ProxySQL
 from mysql_manager.enums import (
     MysqlReplicationProblem,
@@ -14,6 +15,7 @@ from mysql_manager.constants import (
     DEFAULT_CONFIG_PATH,
     DEFAULT_DATABASE,
     RETRY_WAIT_SECONDS,
+    CLUSTER_CHECK_INTERVAL_SECONDS,
 )
 
 class ClusterManager: 
@@ -23,11 +25,31 @@ class ClusterManager:
         self.proxysqls: list[ProxySQL] = [] 
         self.users: dict = {} 
         self.config_file = config_file
+        self.state = {
+            "master": MysqlStatus.UP.value,
+            "replica": MysqlStatus.UP.value,
+        }
         self.read_config_file()
 
     def _log(self, msg) -> None:
-        print(msg)
+        print(str(datetime.datetime.now()) + "  " + msg)
+    
+    def run(self, stop_event: threading.Event):
+        while not stop_event.is_set(): 
+            self._log("Checking cluster state...")
+            time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
+            self.reconcile_cluster_state()
         
+        self._log("Stopping cluster manager...")
+
+    def discover_node_roles(self):
+        self.proxysqls[0].run_command("select * from runtime_mysql_servers")
+        self.update_cluster_state()
+
+    def reconcile_cluster_state(self):
+        self.check_servers_up()
+        self.get_cluster_status()
+
     def read_config_file(self):
         config = ConfigParser()
         config.read(self.config_file)
@@ -46,29 +68,29 @@ class ClusterManager:
         if config.has_section("mysql-s2"): 
             self.repl = MysqlInstance(**config["mysql-s2"])
 
-    def get_cluster_status(self) -> dict: 
-        cluster_status = {
-            "master": MysqlStatus.UP.value,
-            "replica": MysqlStatus.UP.value,
-        }
+    def update_cluster_state(self) -> dict: 
+        if not self.is_server_up(self.src, retry=3):
+            self.state["master"] = MysqlStatus.DOWN.value
+        else: 
+            self.state["master"] = MysqlStatus.UP.value
 
-        try: 
-            self.src.ping()
-        except Exception: 
-            cluster_status["master"] = MysqlStatus.DOWN.value
+        if not self.is_server_up(self.repl, retry=3):
+            self.state["replica"] = MysqlStatus.DOWN.value
+        else: 
+            self.state["replica"] = MysqlStatus.UP.value
 
-        try:
-            self.repl.ping()
-            problems = self.repl.find_replication_problems()
-            if ( 
-                MysqlReplicationProblem.SQL_THREAD_NOT_RUNNING.value in problems 
-                or MysqlReplicationProblem.IO_THREAD_NOT_RUNNING.value in problems
-            ):
-                cluster_status["replica"] = MysqlStatus.DOWN.value
-        except:
-            cluster_status["replica"] = MysqlStatus.DOWN.value
+        # try:
+        #     self.repl.ping()
+        #     problems = self.repl.find_replication_problems()
+        #     if ( 
+        #         MysqlReplicationProblem.SQL_THREAD_NOT_RUNNING.value in problems 
+        #         or MysqlReplicationProblem.IO_THREAD_NOT_RUNNING.value in problems
+        #     ):
+        #         cluster_status["replica"] = MysqlStatus.DOWN.value
+        # except:
+        #     cluster_status["replica"] = MysqlStatus.DOWN.value
         
-        return cluster_status
+        # return cluster_status
 
     def start_mysql_replication(self):
         ## TODO: reset replication all for both of them 
@@ -76,6 +98,17 @@ class ClusterManager:
         self.repl.set_master(self.src)
         self.repl.start_replication("replica", self.users["repl_password"])
     
+    def is_server_up(self, server: BaseManager, retry: int=1) -> bool:
+        for _ in range(retry):
+            try: 
+                server.ping()
+            except Exception:
+                time.sleep(RETRY_WAIT_SECONDS)
+                continue
+            return True
+
+        return False
+
     def check_servers_up(self, retry: int=1): 
         is_ok = False
         for _ in range(retry):

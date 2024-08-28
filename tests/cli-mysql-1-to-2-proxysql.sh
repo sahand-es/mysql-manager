@@ -38,6 +38,10 @@ docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "SELECT 
 docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select Queries, srv_host from stats_mysql_connection_pool\G"
 docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select * from stats_mysql_query_rules"
 
+echo -e "\n\nTest persisted variables..."
+docker compose exec mysql-s2 mysql -uroot -proot -e "select @@global.super_read_only"
+docker compose exec mysql-s2 mysql -uroot -proot -e "select @@global.read_only"
+
 echo -e "\n\nTesting cluster status..."
 docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2
 

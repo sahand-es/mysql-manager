@@ -1,50 +1,56 @@
 #!/bin/bash
 
-echo "Creating servers..."
+echo -e "\U1F6A7 Creating servers..."
 docker compose down
 docker compose up -d 
 sleep 30
 # docker compose exec mm bash /app/scripts/start-replication-with-proxysql-cli.sh
 docker compose exec mm python /app/cli/mysql-cli.py mysql start-cluster --nodes 2
 
-echo -e "\n\nCreating db in master..."
+echo -e "\n\n\U1F4BB Creating db in master..."
 docker compose exec mysql-s1 mysql -uhamadmin -ppassword -h proxysql -e "use hamdb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');"
 sleep 5
 
-echo -e "\n\nChecking through proxysql..."
+echo -e "\n\n\U1F4BB Checking through proxysql..."
 docker compose exec mysql-s1 mysql -uhamadmin -ppassword -h proxysql -e "select * from hamdb.t1;"
 
-echo -e "\n\nChecking master..."
+echo -e "\n\n\U270c Checking master..."
 docker compose exec mysql-s1 mysql -uroot -proot -e "select * from hamdb.t1;"
 
-echo -e "\n\nChecking replica..."
+echo -e "\n\n\U270c Checking replica..."
 docker compose exec mysql-s2 mysql -uroot -proot -e "select * from hamdb.t1;"
 
-echo -e "\n\nChecking events in master..."
+echo -e "\n\n\U270c Checking events in master..."
 docker compose exec mysql-s1 mysql -uroot -proot -e "USE mysql; SHOW EVENTS;"
 
-echo -e "\n\nChecking default user..."
+echo -e "\n\n\U270c Checking default user..."
 docker compose exec mysql-s1 mysql -uroot -proot -e "SELECT user FROM mysql.user"
 docker compose exec mysql-s1 mysql -uroot -proot -e "show grants for hamadmin"
 
-echo -e "\n\nChecking default database..."
+echo -e "\n\n\U270c Checking default database..."
 docker compose exec mysql-s1 mysql -uroot -proot -e "show databases"
 
-echo -e "\n\nChecking proxysql config and stats..."
+echo -e "\n\n\U1F6B6 Checking proxysql config and stats..."
 sleep 10
 docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select * from runtime_mysql_servers;"
 docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "SELECT * FROM monitor.mysql_server_connect_log ORDER BY time_start_us DESC LIMIT 6"
 docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select Queries, srv_host from stats_mysql_connection_pool\G"
 docker compose exec mysql-s1 mysql -uradmin -ppwd -h proxysql -P6032 -e "select * from stats_mysql_query_rules"
 
-echo -e "\n\nChecking metrics from exporter..."
+echo -e "\n\n\U1F6B6 Checking metrics from exporter..."
 curl localhost:9104/metrics | grep mysql_up
 
 
-echo -e "\n\nTesting add replica..."
+echo -e "\n\n\U1F6B6 Test persisted variables..."
+docker compose restart mysql-s2
+sleep 20
+docker compose exec mysql-s2 mysql -uroot -proot -e "select @@global.super_read_only"
+docker compose exec mysql-s2 mysql -uroot -proot -e "select @@global.read_only"
+
+echo -e "\n\n\U1F6B6 Testing add replica..."
 docker compose exec mm python /app/cli/mysql-cli.py mysql add-replica
 
-echo -e "\n\nTesting cluster status..."
+echo -e "\n\n\U1F6B6 Testing cluster status..."
 echo -e "\n[Case 1]: up, up"
 docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2 
 
@@ -62,6 +68,6 @@ docker compose down mysql-s2
 docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2
 sleep 5
 
-echo -e "\n\nDestroying servers..."
+echo -e "\n\n\U1F6A7 Destroying servers..."
 sleep 5
 docker compose down 

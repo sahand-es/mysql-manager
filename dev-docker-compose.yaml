@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  mysql-s1:
+    image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    network_mode: host
+    environment:
+      MYSQL_ROOT_PASSWORD: 'root'
+    volumes:
+      - './tests/config/mysql-s1.cnf:/etc/mysql/conf.d/mysql.cnf'
+    restart: always
+    ports:
+    - 3306:3306
+  mysql-s2:
+    image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    environment:
+      MYSQL_ROOT_PASSWORD: 'root'
+    volumes:
+      - './tests/config/mysql-s2.cnf:/etc/mysql/conf.d/mysql.cnf'
+    restart: always
+    ports:
+    - 3307:3306
+  proxysql: 
+    image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
+    volumes:
+      - './tests/config/proxysql.cnf:/etc/proxysql.cnf'

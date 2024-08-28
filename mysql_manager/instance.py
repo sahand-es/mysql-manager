@@ -281,7 +281,7 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
                     cursor.execute(
                         self._generate_change_master_command(repl_user, repl_password)
                     )
-                    cursor.execute("SET GLOBAL SUPER_READ_ONLY=1")
+                    cursor.execute("SET PERSIST READ_ONLY=1")
                     cursor.execute("START REPLICA")
                     result = cursor.fetchone()
                     self._log(str(result))

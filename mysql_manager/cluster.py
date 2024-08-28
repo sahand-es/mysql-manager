@@ -104,7 +104,7 @@ class ClusterManager:
         self.repl.install_plugin("clone", "mysql_clone.so")
 
         self.repl.run_command(
-            f"set global clone_valid_donor_list='{self.src.host}:3306'"
+            f"set persist clone_valid_donor_list='{self.src.host}:3306'"
         )
         self.repl.run_command("set global super_read_only=0")
         try:

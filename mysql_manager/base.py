@@ -1,7 +1,7 @@
 import pymysql
 from mysql_manager.exceptions import MysqlConnectionException
 
-class BaseManager: 
+class BaseServer: 
     def __init__(self, host: str, user: str, password: str, port: int=3306) -> None:
         self.host = host 
         self.port = port
@@ -10,7 +10,8 @@ class BaseManager:
     
     def _log(self, msg) -> None:
         print("Host: " + self.host + ", " + msg)
- 
+    
+    # TODO: use single connection
     def _get_db(self):
         db = None 
         try:

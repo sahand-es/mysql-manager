@@ -24,3 +24,5 @@ services:
     image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
     volumes:
       - './tests/config/proxysql.cnf:/etc/proxysql.cnf'
+    ports: 
+    - 6032:6032

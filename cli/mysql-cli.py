@@ -1,10 +1,14 @@
 import os
 from configparser import ConfigParser
 
+
 import click, threading, time, signal
 
 from mysql_manager.cluster import ClusterManager
-from mysql_manager.constants import DEFAULT_CONFIG_PATH
+from mysql_manager.constants import (
+    DEFAULT_CONFIG_PATH,
+    CLUSTER_STATE_FILE_PATH,
+)
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.proxysql import ProxySQL
 from mysql_manager.exceptions import ProgramKilled
@@ -127,24 +131,24 @@ def signal_handler(signum, frame):
     raise ProgramKilled()
 
 @mysql.command()
-def run():
+@click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
+def run(nodes: int):
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
-    create_config_file_from_env(nodes_count=2)
+    create_config_file_from_env(nodes_count=nodes)
     print("Starting cluster manager...")
     clm = ClusterManager()
     stop_event = threading.Event()
     tr = threading.Thread(target=clm.run, args=[stop_event])
     tr.start()
+
     while True:
-        try: 
+        try:
             time.sleep(100)
         except ProgramKilled:
             print("Program killed: running cleanup code")
             stop_event.set()
             break
-
-
 
 @mysql.command()
 # @click.option('--config-file', help='Config file of Cluster Manager', required=False, default="/etc/mm/config.ini")
@@ -157,13 +161,12 @@ def start_cluster(nodes: int):
 
 
 @mysql.command()
-@click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
-def get_cluster_status(nodes: int):
-    create_config_file_from_env(nodes_count=nodes)
-    clm = ClusterManager()
-    cluster_status = clm.get_cluster_status()
-    print("master="+cluster_status["master"])
-    print("replica="+cluster_status["replica"])
+def get_cluster_status():
+    config = ConfigParser() 
+    config.read(CLUSTER_STATE_FILE_PATH)
+    
+    print("master="+config.get("state", "master"))
+    print("replica="+config.get("state", "replica"))
 
 
 @mysql.command()

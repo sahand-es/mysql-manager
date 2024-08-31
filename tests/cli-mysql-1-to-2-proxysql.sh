@@ -2,10 +2,13 @@
 
 echo "Creating servers..."
 docker compose down
-docker compose up -d 
-sleep 30
+docker rm -f mm
 
-docker compose exec mm python /app/cli/mysql-cli.py mysql start-cluster --nodes 1
+docker compose up -d 
+docker build ./../ -t mysql-manager:latest
+docker run -d --env-file ../.env-test  --network mysql-manager_default \
+    --name mm mysql-manager:latest --nodes 1 
+sleep 30
 
 echo -e "\n\nCreating db through proxysql..."
 docker compose exec mysql-s1 mysql -uhamadmin -ppassword -h proxysql -e "use hamdb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');"
@@ -24,7 +27,10 @@ echo -e "\n\nPurge master binary logs..."
 docker compose exec mysql-s1 mysql -uroot -proot -e "purge binary logs before now()"
 
 echo -e "\n\nAdding replica to master..."
-docker compose exec mm python /app/cli/mysql-cli.py mysql add-replica
+docker rm -f mm 
+docker run -d --env-file ../.env-test  --network mysql-manager_default \
+    --name mm mysql-manager:latest --nodes 2
+sleep 30 
 
 echo -e "\n\nChecking new replica..."
 sleep 10
@@ -43,8 +49,9 @@ docker compose exec mysql-s2 mysql -uroot -proot -e "select @@global.super_read_
 docker compose exec mysql-s2 mysql -uroot -proot -e "select @@global.read_only"
 
 echo -e "\n\nTesting cluster status..."
-docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2
+docker exec mm python /app/cli/mysql-cli.py mysql get-cluster-status
 
 echo -e "\n\nDestroying servers..."
 sleep 5
 docker compose down 
+docker rm -f mm

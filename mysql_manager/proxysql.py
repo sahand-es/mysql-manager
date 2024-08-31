@@ -1,10 +1,10 @@
 from mysql_manager.instance import MysqlInstance
-from mysql_manager.base import BaseManager
+from mysql_manager.base import BaseServer
 from mysql_manager.exceptions import MysqlConnectionException
 
 
 ## TODO: move mysql related passwords to initialize function
-class ProxySQL(BaseManager): 
+class ProxySQL(BaseServer): 
     def __init__(
         self, 
         host: str,
@@ -36,11 +36,15 @@ class ProxySQL(BaseManager):
                         cursor.execute(f"INSERT INTO mysql_servers(hostgroup_id, hostname, port) VALUES (0,'{instance.host}',3306)")
                     cursor.execute("load mysql servers to runtime")
                     cursor.execute("save mysql servers to disk")
-                    result = cursor.fetchall()
                     self.backends.append(instance)
                 except Exception as e: 
                     self._log(str(e))
-                    raise Exception
+                    raise e
+
+    def shun_backend(self, instance: MysqlInstance):
+        self.run_command(f"delete from mysql_servers where 'hostname'={instance.host}")
+        self.run_command("load mysql servers to runtime")
+        self.run_command("save mysql servers to disk")
 
     def find_backend_problems(self):
         pass 
@@ -75,6 +79,15 @@ class ProxySQL(BaseManager):
                 except Exception as e: 
                     self._log(str(e))
                     raise e
+
+    def is_configured(self) -> bool:
+        servers = None 
+        try: 
+            servers = self.run_command("select * from mysql_servers")
+        except Exception as e: 
+            self._log(e)
+
+        return servers is not None 
 
     def split_read_write(self, is_active):
         db = self._get_db()

@@ -7,10 +7,10 @@ from mysql_manager.enums import (
 )
 
 from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException, MysqlAddPITREventException
-from mysql_manager.base import BaseManager
+from mysql_manager.base import BaseServer
 from mysql_manager.constants import DEFAULT_DATABASE
 
-class MysqlInstance(BaseManager):
+class MysqlInstance(BaseServer):
     def __init__(self, host: str, user: str, password: str, port: int=3306) -> None:
         self.host = host 
         self.port = port
@@ -195,6 +195,45 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
         ## TODO: what if replica is not available?
         return self.get_replica_status() is not None 
     
+    def get_gtid_executed(self) -> str: 
+        res = self.run_command("select @@global.gtid_executed as gtid")
+        return res.get("gtid") 
+
+    def restart_replication(self):
+        db = self._get_db()
+        if db is None: 
+            self._log("Could not connect to mysql")
+            raise MysqlConnectionException()
+        
+        with db: 
+            with db.cursor() as cursor:
+                try: 
+                    cursor.execute("stop replica")
+                    cursor.execute("start replica")
+                except Exception as e:
+                    self._log(str(e)) 
+                    raise e
+                
+    def has_base_gtid_set(self): 
+        db = self._get_db()
+        if db is None: 
+            self._log("Could not connect to mysql")
+            raise MysqlConnectionException()
+        
+        with db: 
+            with db.cursor() as cursor:
+                try: 
+                    cursor.execute("select @@global.server_uuid as uuid")
+                    result = cursor.fetchone()
+                    uuid = result.get("uuid")
+
+                    cursor.execute("select @@global.gtid_executed as gtid")
+                    result = cursor.fetchone()
+                    return f"{uuid}:1-5" == result.get("gtid") 
+                except Exception as e:
+                    self._log(str(e)) 
+                    raise e
+
     def install_plugin(self, plugin_name: str, plugin_file: str): 
         plugins = self.run_command(f"SELECT * FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME = '{plugin_name}'")
         if plugins is not None:
@@ -206,7 +245,7 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
     def find_replication_problems(self) -> list[MysqlReplicationProblem]:
         status = self.get_replica_status()
         if status is None: 
-            return [MysqlReplicationProblem.NOT_SLAVE.value]
+            return [MysqlReplicationProblem.NOT_REPLICA.value]
         
         # values of these two can be used in future: 'Replica_IO_State', 'Replica_SQL_Running_State'
         ## TODO: check if keys exist in `status`
@@ -249,6 +288,24 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
     SOURCE_RETRY_COUNT = 10,
     SOURCE_AUTO_POSITION = 1; 
 """
+    
+    def reset_replication(self):
+        db = self._get_db()
+        if db is None: 
+            self._log("Could not connect to mysql")
+            raise MysqlConnectionException()        
+        with db: 
+            with db.cursor() as cursor:
+                try: 
+                    cursor.execute("stop replica")
+                    cursor.execute("reset replica all")
+                    cursor.execute("set persist read_only=0")
+                except Exception as e:
+                    self._log(str(e)) 
+                    raise e
+
+        self.master = None 
+
     ## TODO: read orchestrator code 
     ## TODO: check server ids not equal
     def start_replication(self, repl_user: str, repl_password: str): 

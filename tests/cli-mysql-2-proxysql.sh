@@ -2,10 +2,14 @@
 
 echo -e "\U1F6A7 Creating servers..."
 docker compose down
+docker rm -f mm
+
 docker compose up -d 
+docker build ./../ -t mysql-manager:latest
+docker run -d --env-file ../.env-test  --network mysql-manager_default \
+    --name mm mysql-manager:latest --nodes 2
 sleep 30
-# docker compose exec mm bash /app/scripts/start-replication-with-proxysql-cli.sh
-docker compose exec mm python /app/cli/mysql-cli.py mysql start-cluster --nodes 2
+
 
 echo -e "\n\n\U1F4BB Creating db in master..."
 docker compose exec mysql-s1 mysql -uhamadmin -ppassword -h proxysql -e "use hamdb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');"
@@ -52,22 +56,27 @@ docker compose exec mm python /app/cli/mysql-cli.py mysql add-replica
 
 echo -e "\n\n\U1F6B6 Testing cluster status..."
 echo -e "\n[Case 1]: up, up"
-docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2 
+sleep 5
+docker exec mm python /app/cli/mysql-cli.py mysql get-cluster-status 
 
-echo -e "\n[Case 2]: up, down"
+echo -e "\n[Case 2]: up, not_replicating"
 docker compose exec mysql-s2 mysql -uroot -proot -e "stop replica io_thread"
-docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2
+sleep 5
+docker exec mm python /app/cli/mysql-cli.py mysql get-cluster-status 
 
-echo -e "\n[Case 3]: up, down"
+echo -e "\n[Case 3]: up, not_replicating"
 docker compose exec mysql-s2 mysql -uroot -proot -e "start replica io_thread"
 docker compose exec mysql-s2 mysql -uroot -proot -e "stop replica sql_thread"
-docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2
+sleep 5
+docker exec mm python /app/cli/mysql-cli.py mysql get-cluster-status
 
 echo -e "\n[Case 4]: up, down"
 docker compose down mysql-s2 
-docker compose exec mm python /app/cli/mysql-cli.py mysql get-cluster-status --nodes 2
+sleep 5
+docker exec mm python /app/cli/mysql-cli.py mysql get-cluster-status
 sleep 5
 
 echo -e "\n\n\U1F6A7 Destroying servers..."
 sleep 5
 docker compose down 
+docker rm -f mm 

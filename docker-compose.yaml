@@ -1,21 +1,21 @@
 version: '3'
 
 services:
-  mm:
-    # image: registry.hamdocker.ir/public/mysql-manager:b212be8e
-    build: .
-    command: sleep inf
-    environment: 
-      MYSQL_S1_HOST: mysql-s1
-      MYSQL_S2_HOST: mysql-s2
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_NONPRIV_USER: hamadmin
-      MYSQL_NONPRIV_PASSWORD: password
-      MYSQL_REPL_PASSWORD: repl
-      MYSQL_EXPORTER_PASSWORD: exporter
-      PROXYSQL_HOST: proxysql
-      PROXYSQL_PASSWORD: pwd 
-      PROXYSQL_MON_PASSWORD: pwd
+  # mm:
+  #   # image: registry.hamdocker.ir/public/mysql-manager:b212be8e
+  #   build: .
+  #   command: --nodes 1 
+  #   environment: 
+  #     MYSQL_S1_HOST: mysql-s1
+  #     MYSQL_S2_HOST: mysql-s2
+  #     MYSQL_ROOT_PASSWORD: root
+  #     MYSQL_NONPRIV_USER: hamadmin
+  #     MYSQL_NONPRIV_PASSWORD: password
+  #     MYSQL_REPL_PASSWORD: repl
+  #     MYSQL_EXPORTER_PASSWORD: exporter
+  #     PROXYSQL_HOST: proxysql
+  #     PROXYSQL_PASSWORD: pwd 
+  #     PROXYSQL_MON_PASSWORD: pwd
     # volumes:
     # - './tests/config/mm-config-mysql-2.ini:/etc/mm/config.ini'
     # - './tests/config/mm-config-mysql-1.ini:/etc/mm/config-mysql-1.ini'

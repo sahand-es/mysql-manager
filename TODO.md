@@ -1,0 +1,2 @@
+- [] make MM highly available
+- [] use etcd as state store

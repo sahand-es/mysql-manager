@@ -79,3 +79,4 @@ scenarios:
 metrics: 
 - `total_cluster_connection_failure`
 - `total_successful_failover`
+

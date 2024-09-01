@@ -10,6 +10,7 @@ python = "^3.11"
 pymysql = "^1.1.0"
 cryptography = "^42.0.8"
 click = "^8.1.7"
+testcontainers = "^4.8.0"
 
 [build-system]
 requires = ["poetry-core"]

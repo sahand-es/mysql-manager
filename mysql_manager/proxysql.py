@@ -41,10 +41,21 @@ class ProxySQL(BaseServer):
                     self._log(str(e))
                     raise e
 
-    def shun_backend(self, instance: MysqlInstance):
-        self.run_command(f"delete from mysql_servers where 'hostname'={instance.host}")
-        self.run_command("load mysql servers to runtime")
-        self.run_command("save mysql servers to disk")
+    def remove_backend(self, instance: MysqlInstance):
+        db = self._get_db()
+        if db is None: 
+            self._log("Could not connect to proxysql")
+            raise MysqlConnectionException()
+        
+        with db: 
+            with db.cursor() as cursor:
+                try: 
+                    cursor.execute(f"delete from mysql_servers where hostname='{instance.host}'")
+                    cursor.execute("load mysql servers to runtime")
+                    cursor.execute("save mysql servers to disk")
+                except Exception as e: 
+                    self._log(str(e))
+                    raise e
 
     def find_backend_problems(self):
         pass 

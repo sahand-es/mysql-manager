@@ -49,14 +49,12 @@ class ClusterManager:
         if config.has_section("mysql-s2"): 
             self.repl = MysqlInstance(**config["mysql-s2"])
 
-    def run(self, stop_event: threading.Event):
+    def run(self):
         self.start()
-        while not stop_event.is_set(): 
+        while True: 
             self._log("Checking cluster state...")
             time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
             self.reconcile_cluster()
-
-        self._log("Stopping cluster manager...")
 
     def reconcile_cluster(self):
         self._log("Running reconciliation for cluster")
@@ -65,30 +63,37 @@ class ClusterManager:
             # TODO: if successful increase total_successful_failover metric
         
         self.update_cluster_state()
+        self._log("Current cluster state: " + str(self.state))
         if (
-            self.state.master_failure_count > MASTER_FAILURE_THRESHOLD 
-            and self.state.replica == MysqlStatus.UP.value
+            self.state.replica == MysqlStatus.NOT_REPLICATING.value
+            and self.state.master == MysqlStatus.UP.value
         ):
-            self._log("Running failover for cluster")
-            self.state.old_master_joined = False
-            self.proxysqls[0].shun_backend(self.src)
-            self.repl.reset_replication()
-            self.switch_src_and_repl()
-            
-        if (
+            self.repl.restart_replication()
+        elif (
             self.state.master == MysqlStatus.DOWN.value
             and self.state.replica == MysqlStatus.DOWN.value
         ):
             # TODO: increase total_cluster_connection_failure metric
             pass 
-        
-        if self.state.replica == MysqlStatus.NOT_REPLICATING.value:
-            self.repl.restart_replication()
-    
+        elif (
+            self.state.master_failure_count > MASTER_FAILURE_THRESHOLD 
+            and self.state.replica in [MysqlStatus.UP.value, MysqlStatus.NOT_REPLICATING.value]
+        ):
+            self._log("Running failover for cluster")
+            self.state.old_master_joined = False
+            self.proxysqls[0].remove_backend(self.src)
+            self.repl.reset_replication()
+            self.switch_src_and_repl()
+
+        self._log(f"Master is {self.src.host}")
+        if self.repl is not None: 
+            self._log(f"Replica is {self.repl.host}")
+
     def switch_src_and_repl(self): 
         self._log(f"Switching src[{self.src.host}] and repl[{self.repl.host}]")
+        tmp_src = MysqlInstance(self.src.host, self.src.user, self.src.password)
         self.src = MysqlInstance(self.repl.host, self.repl.user, self.repl.password)
-        self.repl = MysqlInstance(self.src.host, self.src.user, self.src.password)
+        self.repl = MysqlInstance(tmp_src.host, tmp_src.user, tmp_src.password)
 
     def update_cluster_state(self) -> dict: 
         if not self.is_server_up(self.src, retry=1):
@@ -123,7 +128,7 @@ class ClusterManager:
 
     def start_mysql_replication(self):
         ## TODO: reset replication all for both of them 
-        self._log(f"Starting replication in repl[{self.repl.host}]")
+        self._log(f"Starting replication in {self.repl.host}")
         self.src.add_replica(self.repl)
         self.repl.set_master(self.src)
         self.repl.start_replication("replica", self.users["repl_password"])
@@ -173,7 +178,9 @@ class ClusterManager:
 
     def add_replica_to_master(self, retry: int=1):
         self._log("Adding replica to master")
-        self.check_servers_up(retry=retry)
+        if not self.is_server_up(self.repl):
+            return 
+        
         if self.repl is not None and self.repl.is_replica():
             return
             
@@ -194,6 +201,7 @@ class ClusterManager:
         self.check_servers_up(retry=retry)
         self.start_mysql_replication()
         self.proxysqls[0].add_backend(self.repl, 1, False)
+        self.state.old_master_joined = True
 
     def start(self):
         # TODO: make proxysql and src initial setup idempotent

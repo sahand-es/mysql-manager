@@ -1,4 +1,5 @@
 import pymysql
+import datetime
 from mysql_manager.exceptions import MysqlConnectionException
 
 class BaseServer: 
@@ -9,7 +10,7 @@ class BaseServer:
         self.password = password
     
     def _log(self, msg) -> None:
-        print("Host: " + self.host + ", " + msg)
+        print(str(datetime.datetime.now()) + "  " + "[" + self.host + "] " + msg)
     
     # TODO: use single connection
     def _get_db(self):

@@ -14,7 +14,7 @@ sleep 30
 
 
 
-echo -e "\n\nCreating db in master..."
+echo -e "\n\nCreating db through proxysql..."
 docker compose exec mysql-s1 mysql -uhamadmin -ppassword -h proxysql -e "use hamdb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');"
 sleep 5
 

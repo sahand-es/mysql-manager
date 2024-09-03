@@ -189,7 +189,10 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
         return self.run_command("SHOW MASTER STATUS") 
 
     def get_replica_status(self) -> dict:
-        return self.run_command("SHOW REPLICA STATUS") 
+        try: 
+            return self.run_command("SHOW REPLICA STATUS") 
+        except: 
+            return None        
 
     def is_replica(self) -> bool: 
         ## TODO: what if replica is not available?
@@ -341,7 +344,6 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
                     cursor.execute("SET PERSIST READ_ONLY=1")
                     cursor.execute("START REPLICA")
                     result = cursor.fetchone()
-                    self._log(str(result))
                 except Exception as e:
                     self._log(str(e)) 
                     raise MysqlReplicationException()

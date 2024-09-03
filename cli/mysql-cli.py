@@ -133,22 +133,25 @@ def signal_handler(signum, frame):
 @mysql.command()
 @click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
 def run(nodes: int):
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
+    # signal.signal(signal.SIGTERM, signal_handler)
+    # signal.signal(signal.SIGINT, signal_handler)
     create_config_file_from_env(nodes_count=nodes)
     print("Starting cluster manager...")
     clm = ClusterManager()
-    stop_event = threading.Event()
-    tr = threading.Thread(target=clm.run, args=[stop_event])
-    tr.start()
+    clm.run()
+    # stop_event = threading.Event()
+    # tr = threading.Thread(target=clm.run, args=[stop_event])
+    # tr.start()
 
-    while True:
-        try:
-            time.sleep(100)
-        except ProgramKilled:
-            print("Program killed: running cleanup code")
-            stop_event.set()
-            break
+    # while True:
+    #     try:
+    #         time.sleep(5)
+    #         if not tr.is_alive():
+    #             break 
+    #     except ProgramKilled:
+    #         print("Program killed: running cleanup code")
+    #         stop_event.set()
+    #         break
 
 @mysql.command()
 # @click.option('--config-file', help='Config file of Cluster Manager', required=False, default="/etc/mm/config.ini")
@@ -169,12 +172,12 @@ def get_cluster_status():
     print("replica="+config.get("state", "replica"))
 
 
-@mysql.command()
-# @click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
-def add_replica():
-    create_config_file_from_env(nodes_count=2)
-    clm = ClusterManager()
-    clm.add_replica_to_master()
+# @mysql.command()
+# # @click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
+# def add_replica():
+#     create_config_file_from_env(nodes_count=2)
+#     clm = ClusterManager()
+#     clm.add_replica_to_master()
 
 # @mysql.command()
 # @click.option('--master', help='Master MySQL host for replication')
@@ -188,20 +191,20 @@ def add_replica():
 #     src.add_replica(repl)
 
 
-@mysql.command()
-@click.option('--master', help='Master MySQL name')
-@click.option('--replica', help='MySQL name to start replication')
-@click.option('--repl-user', help='Replication user')
-@click.option('--repl-password', help='Replication user password')
-@click.pass_context
-def start_replication(ctx, master, replica, repl_user, repl_password):
-    config = ctx.obj['CONFIG']
+# @mysql.command()
+# @click.option('--master', help='Master MySQL name')
+# @click.option('--replica', help='MySQL name to start replication')
+# @click.option('--repl-user', help='Replication user')
+# @click.option('--repl-password', help='Replication user password')
+# @click.pass_context
+# def start_replication(ctx, master, replica, repl_user, repl_password):
+#     config = ctx.obj['CONFIG']
 
-    print(f"Starting replication on mysql '{replica}' with repl_user '{repl_user}' on master '{master}'")
-    master_instance = MysqlInstance(**get_instance_from_config(config, master))
-    repl = MysqlInstance(**get_instance_from_config(config, replica))
-    repl.set_master(master_instance)
-    repl.start_replication(repl_user, repl_password)
+#     print(f"Starting replication on mysql '{replica}' with repl_user '{repl_user}' on master '{master}'")
+#     master_instance = MysqlInstance(**get_instance_from_config(config, master))
+#     repl = MysqlInstance(**get_instance_from_config(config, replica))
+#     repl.set_master(master_instance)
+#     repl.start_replication(repl_user, repl_password)
 
 
 @mysql.command()

@@ -1,2 +1,7 @@
 - [] make MM highly available
 - [] use etcd as state store
+- [] how add new standbys 
+- [] add replicas async 
+- [] yaml nested config file 
+- [] add backend in proxysql must be idempotent
+- [] restart replica must not be done in an instance that has no replication configured

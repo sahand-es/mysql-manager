@@ -79,4 +79,26 @@ scenarios:
 metrics: 
 - `total_cluster_connection_failure`
 - `total_successful_failover`
+- current server roles
+
+failover test scenarios: 
+- 2 mysql servers up, 1 proxysql up:
+  - master fails. tests:
+    - deleted in proxysql 
+    - old replica must be master:
+      - read_only = 0 
+      - super_read_only = 0
+      - no replication config
+      - added as a writeable host in proxysql
+      - deleted old master
+    - old master must join the cluster
+      - read_only = 1
+      - super_readonly = 0 
+      - replicating from new master
+      - gtid executed set must match that of new master's
+  - new master fails
+  - after failover mm restarts
+  - after initial setup mm restarts 
+  - master fails and becomes running before failure threshold
+
 

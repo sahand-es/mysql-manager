@@ -6,8 +6,9 @@ docker rm -f mm
 
 docker compose up -d 
 docker build ./../ -t mysql-manager:latest
-docker run -d --env-file ../.env-test  --network mysql-manager_default \
-    --name mm mysql-manager:latest --nodes 1 
+docker run -d \
+    -v ./config/mm-config-mysql-1.yaml:/etc/mm/cluster-spec.yaml \
+    --network mysql-manager_default --name mm mysql-manager:latest 
 sleep 30
 # docker compose exec mm bash /app/scripts/start-simple-with-proxysql-cli.sh
 # docker compose exec mm python /app/cli/mysql-cli.py mysql start 

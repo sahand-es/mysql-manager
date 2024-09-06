@@ -1,3 +1,11 @@
+class MysqlClusterConfigError(Exception):
+    def __init__(self) -> None:
+        super().__init__(
+            """
+            Mysql cluster config is not correct. At least one mysql and one proxysql is needed
+            """
+        )
+
 class ProgramKilled(Exception):
     def __init__(self) -> None:
         super().__init__("Got signal from OS to stop")

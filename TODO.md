@@ -2,6 +2,10 @@
 - [] use etcd as state store
 - [] how add new standbys 
 - [] add replicas async 
-- [] yaml nested config file 
+- [x] yaml nested config file 
 - [] add backend in proxysql must be idempotent
 - [] restart replica must not be done in an instance that has no replication configured
+- [] let standby replica to exec all relay log before stopping its replication
+- [] check proxysql state regardless of base gtid set in mysqls
+- [] test restart during one master down 
+- [] test failover to old master 

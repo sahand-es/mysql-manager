@@ -61,11 +61,23 @@ def test_proxysql():
     print("Pinged: " + str(px.ping()))
 
 def test_cluster_read_config():
-    clm = ClusterManager("./tests/config/mm-config-mysql-2.ini")
-    clm.read_config_file()
-    print(clm.src)
-    print(clm.repl)
-    print(clm.proxysqls)
+    clm = ClusterManager("./tests/config/mm-config-mysql-1.yaml")
+    assert clm.src.host == "mysql-s1"
+    assert clm.src.user == "root"
+    assert clm.src.password == "root"
+    # print(clm.repl)
+    assert len(clm.proxysqls) == 1 
+    assert clm.proxysqls[0].host == "proxysql" 
+    assert clm.proxysqls[0].user == "radmin" 
+    assert clm.proxysqls[0].password == "pwd" 
+    assert clm.users == {
+        "replPassword": "password",
+        "exporterPassword": "exporter",
+        "nonprivPassword": "password",
+        "nonprivUser": "dbadmin",
+        "proxysqlMonPassword": "password",
+    }
+
 
 if __name__ == "__main__": 
     # test_normal_info_wrong()

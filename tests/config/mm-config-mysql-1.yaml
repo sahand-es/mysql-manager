@@ -1,0 +1,17 @@
+clusterSpec: 
+  mysqls:
+  - host: mysql-s1
+    user: root
+    password: root
+  readonlyMysqls: []
+  proxysqls: 
+  - host: proxysql
+    user: radmin 
+    password: pwd
+  users: 
+    replPassword: password
+    exporterPassword: exporter
+    nonprivPassword: password
+    nonprivUser: hamadmin
+    proxysqlMonPassword: password
+

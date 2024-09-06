@@ -6,8 +6,9 @@ docker rm -f mm
 
 docker compose up -d 
 docker build ./../ -t mysql-manager:latest
-docker run -d --env-file ../.env-test  --network mysql-manager_default \
-    --name mm mysql-manager:latest --nodes 2
+docker run -d \
+    -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
+    --network mysql-manager_default --name mm mysql-manager:latest 
 sleep 60
 
 
@@ -90,8 +91,9 @@ sleep 30
 
 echo -e "\n\nTesting mysql manager restart..."
 docker rm -f mm
-docker run -d --env-file ../.env-test  --network mysql-manager_default \
-    --name mm mysql-manager:latest --nodes 2
+docker run -d \
+    -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
+    --network mysql-manager_default --name mm mysql-manager:latest 
 sleep 30
 docker logs mm --tail 40
 sleep 5

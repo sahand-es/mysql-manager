@@ -1,6 +1,6 @@
-DEFAULT_CONFIG_PATH = "/etc/mm/config.ini"
+DEFAULT_CONFIG_PATH = "/etc/mm/cluster-spec.yaml"
 DEFAULT_DATABASE = "hamdb"
 RETRY_WAIT_SECONDS = 10
 CLUSTER_CHECK_INTERVAL_SECONDS = 5
 MASTER_FAILURE_THRESHOLD = 3
-CLUSTER_STATE_FILE_PATH = "/tmp/cluster-state.json"
+CLUSTER_STATE_FILE_PATH = "/tmp/cluster-state.yaml"

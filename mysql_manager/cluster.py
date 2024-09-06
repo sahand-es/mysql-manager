@@ -1,7 +1,6 @@
-from configparser import ConfigParser
-import time, datetime, threading
+import time, datetime, yaml
 from pymysql.err import OperationalError
-
+from dataclasses import asdict
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.dto import ClusterStateDTO
 from mysql_manager.base import BaseServer
@@ -10,7 +9,10 @@ from mysql_manager.enums import (
     MysqlReplicationProblem,
     MysqlStatus,
 )
-from mysql_manager.exceptions import MysqlConnectionException
+from mysql_manager.exceptions import (
+    MysqlConnectionException,
+    MysqlClusterConfigError,
+)
 from mysql_manager.constants import *
 
 class ClusterManager: 
@@ -26,28 +28,34 @@ class ClusterManager:
             old_master_joined=True,
             master_failure_count=0,
         )
-        self.read_config_file()
+        self._read_config_file()
 
     def _log(self, msg) -> None:
         print(str(datetime.datetime.now()) + "  " + msg)
 
-    def read_config_file(self):
-        config = ConfigParser()
-        config.read(self.config_file)
+    def _validate_config(self, spec: dict): 
+        if len(spec["mysqls"]) == 0 or len(spec["proxysqls"]) == 0: 
+            raise MysqlClusterConfigError()
+        
+    def _read_config_file(self):
+        with open(self.config_file, "r") as f:
+            spec = yaml.safe_load(f)["clusterSpec"]
 
-        self.src = MysqlInstance(**config["mysql-s1"])
-        self.users = config["users"]
+        self._validate_config(spec)
+        self.src = MysqlInstance(**spec["mysqls"][0])
+        self.users = spec["users"]
         self.proxysqls.append(
             ProxySQL(
-                **config["proxysql-1"], 
-                mysql_user=self.users["nonpriv_user"],
-                mysql_password=self.users["nonpriv_password"],
+                **spec["proxysqls"][0], 
+                mysql_user=self.users["nonprivUser"],
+                mysql_password=self.users["nonprivPassword"],
                 monitor_user="proxysql",
-                monitor_password=self.users["proxysql_mon_password"]),
-            )
+                monitor_password=self.users["proxysqlMonPassword"]
+            ),
+        )
         
-        if config.has_section("mysql-s2"): 
-            self.repl = MysqlInstance(**config["mysql-s2"])
+        if len(spec["mysqls"]) == 2: 
+            self.repl = MysqlInstance(**spec["mysqls"][1])
 
     def run(self):
         self.start()
@@ -118,20 +126,15 @@ class ClusterManager:
         self._write_cluster_state()
 
     def _write_cluster_state(self):
-        config = ConfigParser()
-        config.add_section("state")
-        config.set("state", "master", self.state.master)
-        config.set("state", "replica", self.state.replica)
-        
         with open(CLUSTER_STATE_FILE_PATH, "w") as sf:
-            config.write(sf)
+            sf.write(yaml.safe_dump(asdict(self.state)))
 
     def start_mysql_replication(self):
         ## TODO: reset replication all for both of them 
         self._log(f"Starting replication in {self.repl.host}")
         self.src.add_replica(self.repl)
         self.repl.set_master(self.src)
-        self.repl.start_replication("replica", self.users["repl_password"])
+        self.repl.start_replication("replica", self.users["replPassword"])
     
     def is_server_up(self, server: BaseServer, retry: int=1) -> bool:
         for i in range(retry):
@@ -167,12 +170,12 @@ class ClusterManager:
         self._log(f"Initial config of src[{self.src.host}]")
         self.src.add_pitr_event(minute_intervals=15)
         self.src.create_new_user(
-            "replica", self.users["repl_password"], ["REPLICATION SLAVE"]
+            "replica", self.users["replPassword"], ["REPLICATION SLAVE"]
         )
         self.src.create_database(DEFAULT_DATABASE)
-        self.src.create_monitoring_user(self.users["exporter_password"])
-        self.src.create_nonpriv_user(self.users["nonpriv_user"], self.users["nonpriv_password"])
-        self.src.create_new_user("proxysql", self.users["proxysql_mon_password"], ["USAGE", "REPLICATION CLIENT"])
+        self.src.create_monitoring_user(self.users["exporterPassword"])
+        self.src.create_nonpriv_user(self.users["nonprivUser"], self.users["nonprivPassword"])
+        self.src.create_new_user("proxysql", self.users["proxysqlMonPassword"], ["USAGE", "REPLICATION CLIENT"])
         
         self.proxysqls[0].add_backend(self.src, 1, True)
 

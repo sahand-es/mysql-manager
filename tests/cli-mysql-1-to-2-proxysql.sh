@@ -6,8 +6,9 @@ docker rm -f mm
 
 docker compose up -d 
 docker build ./../ -t mysql-manager:latest
-docker run -d --env-file ../.env-test  --network mysql-manager_default \
-    --name mm mysql-manager:latest --nodes 1 
+docker run -d \
+    -v ./config/mm-config-mysql-1.yaml:/etc/mm/cluster-spec.yaml \
+    --network mysql-manager_default --name mm mysql-manager:latest
 sleep 30
 
 echo -e "\n\nCreating db through proxysql..."
@@ -28,8 +29,9 @@ docker compose exec mysql-s1 mysql -uroot -proot -e "purge binary logs before no
 
 echo -e "\n\nAdding replica to master..."
 docker rm -f mm 
-docker run -d --env-file ../.env-test  --network mysql-manager_default \
-    --name mm mysql-manager:latest --nodes 2
+docker run -d \
+    -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
+    --network mysql-manager_default --name mm mysql-manager:latest
 sleep 30 
 
 echo -e "\n\nChecking new replica..."

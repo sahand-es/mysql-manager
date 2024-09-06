@@ -2,7 +2,8 @@ import os
 from configparser import ConfigParser
 
 
-import click, threading, time, signal
+import click
+import yaml
 
 from mysql_manager.cluster import ClusterManager
 from mysql_manager.constants import (
@@ -45,9 +46,10 @@ def get_instance_from_config(config, name):
 @click.group()
 @click.pass_context
 def cli(ctx):
-    ctx.ensure_object(dict)
-    os.makedirs('/etc/mm', exist_ok=True)
-    ctx.obj['CONFIG'] = read_config_file(DEFAULT_CONFIG_PATH) if DEFAULT_CONFIG_PATH else None
+    pass
+    # ctx.ensure_object(dict)
+    # os.makedirs('/etc/mm', exist_ok=True)
+    # ctx.obj['CONFIG'] = read_config_file(DEFAULT_CONFIG_PATH) if DEFAULT_CONFIG_PATH else None
 
 
 @cli.group()
@@ -131,11 +133,11 @@ def signal_handler(signum, frame):
     raise ProgramKilled()
 
 @mysql.command()
-@click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
-def run(nodes: int):
+# @click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
+def run():
     # signal.signal(signal.SIGTERM, signal_handler)
     # signal.signal(signal.SIGINT, signal_handler)
-    create_config_file_from_env(nodes_count=nodes)
+    # create_config_file_from_env(nodes_count=nodes)
     print("Starting cluster manager...")
     clm = ClusterManager()
     clm.run()
@@ -157,27 +159,31 @@ def run(nodes: int):
 # @click.option('--config-file', help='Config file of Cluster Manager', required=False, default="/etc/mm/config.ini")
 @click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
 def start_cluster(nodes: int):
-    create_config_file_from_env(nodes_count=nodes)
-    print("Starting cluster...")
-    clm = ClusterManager()
-    clm.start()
-
+    # create_config_file_from_env(nodes_count=nodes)
+    # print("Starting cluster...")
+    # clm = ClusterManager()
+    # clm.start()
+    pass 
 
 @mysql.command()
 def get_cluster_status():
-    config = ConfigParser() 
-    config.read(CLUSTER_STATE_FILE_PATH)
-    
-    print("master="+config.get("state", "master"))
-    print("replica="+config.get("state", "replica"))
+    # config = ConfigParser() 
+    # config.read(CLUSTER_STATE_FILE_PATH)
+     
+    with open(CLUSTER_STATE_FILE_PATH, "r") as sf:
+        state = yaml.safe_load(sf)
+
+    print("master="+state.get("master"))
+    print("replica="+state.get("replica"))
 
 
-# @mysql.command()
-# # @click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
-# def add_replica():
-#     create_config_file_from_env(nodes_count=2)
-#     clm = ClusterManager()
-#     clm.add_replica_to_master()
+@mysql.command()
+# @click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
+def add_replica():
+    pass 
+    # create_config_file_from_env(nodes_count=2)
+    # clm = ClusterManager()
+    # clm.add_replica_to_master()
 
 # @mysql.command()
 # @click.option('--master', help='Master MySQL host for replication')

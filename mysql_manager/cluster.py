@@ -140,12 +140,11 @@ class ClusterManager:
         for i in range(retry):
             try: 
                 server.ping()
+                return True
             except Exception:
                 # do not sleep in last retry
                 if i+1 != retry: 
                     time.sleep(RETRY_WAIT_SECONDS)
-                continue
-            return True
 
         return False
 
@@ -157,11 +156,10 @@ class ClusterManager:
                 if self.repl is not None:
                     self.repl.ping()
                 self.proxysqls[0].ping()
+                return
             except Exception as e:
                 time.sleep(RETRY_WAIT_SECONDS)
-                continue
             # is_ok = True
-            break
         
         # if is_ok == False:
         #     raise MysqlConnectionException()

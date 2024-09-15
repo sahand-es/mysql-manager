@@ -8,4 +8,8 @@
 - [] let standby replica to exec all relay log before stopping its replication
 - [] check proxysql state regardless of base gtid set in mysqls
 - [] test restart during one master down 
-- [] test failover to old master 
+- [] test failover to old master
+- [] failover on disk full
+- [] do not failover if behind master > threshold
+- [] add metrics for connection failures 
+- [] support replicating from another external server

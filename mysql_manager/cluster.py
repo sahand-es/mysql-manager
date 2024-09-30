@@ -1,6 +1,8 @@
 import time, datetime, yaml
 from pymysql.err import OperationalError
 from dataclasses import asdict
+from prometheus_client import start_http_server
+
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.dto import ClusterStateDTO
 from mysql_manager.base import BaseServer
@@ -9,11 +11,20 @@ from mysql_manager.enums import (
     MysqlReplicationProblem,
     MysqlStatus,
 )
+
 from mysql_manager.exceptions import (
     MysqlConnectionException,
     MysqlClusterConfigError,
 )
 from mysql_manager.constants import *
+from mysql_manager.metrics import (
+    FAILOVER_ATTEMPTS, 
+    SUCCESSFUL_FAILOVERS,
+    REPLICATION_RESTARTS,
+    CLUSTER_FAILURES,
+    MASTER_UP_STATUS,
+    REPLICA_UP_STATUS,
+)
 
 class ClusterManager: 
     def __init__(self, config_file: str=DEFAULT_CONFIG_PATH):
@@ -29,6 +40,9 @@ class ClusterManager:
             master_failure_count=0,
         )
         self._read_config_file()
+
+        # Start Prometheus metrics server on port 8000
+        start_http_server(8000)
 
     def _log(self, msg) -> None:
         print(str(datetime.datetime.now()) + "  " + msg)
@@ -68,26 +82,32 @@ class ClusterManager:
         self._log("Running reconciliation for cluster")
         if self.state.old_master_joined == False: 
             self.add_replica_to_master(retry=1)
-            # TODO: if successful increase total_successful_failover metric
-        
+
         self.update_cluster_state()
         self._log("Current cluster state: " + str(self.state))
+        self._set_status_metrics()
+
         if (
-            self.state.replica == MysqlStatus.NOT_REPLICATING.value
+            self.state.replica == MysqlStatus.REPLICATION_THREADS_STOPPED.value
             and self.state.master == MysqlStatus.UP.value
         ):
             self.repl.restart_replication()
+            REPLICATION_RESTARTS.inc()
         elif (
             self.state.master == MysqlStatus.DOWN.value
             and self.state.replica == MysqlStatus.DOWN.value
         ):
-            # TODO: increase total_cluster_connection_failure metric
-            pass 
+            CLUSTER_FAILURES.inc()
+            self._log("Cluster failure detected: Master and replicas are down.")
         elif (
+            # TODO: add more checks for replica: if it was not running sql thread for
+            # a long time, if it is behind master for a long time
             self.state.master_failure_count > MASTER_FAILURE_THRESHOLD 
-            and self.state.replica in [MysqlStatus.UP.value, MysqlStatus.NOT_REPLICATING.value]
+            and self.state.replica != MysqlStatus.DOWN.value
         ):
             self._log("Running failover for cluster")
+            FAILOVER_ATTEMPTS.inc()
+
             self.state.old_master_joined = False
             self.proxysqls[0].remove_backend(self.src)
             self.repl.reset_replication()
@@ -96,6 +116,18 @@ class ClusterManager:
         self._log(f"Master is {self.src.host}")
         if self.repl is not None: 
             self._log(f"Replica is {self.repl.host}")
+
+    def _set_status_metrics(self):
+        MASTER_UP_STATUS.clear()
+        MASTER_UP_STATUS.labels(host=self.src.host).set(
+            1 if self.state.master == MysqlStatus.UP.value else 0
+        )
+
+        if self.repl is not None: 
+            REPLICA_UP_STATUS.clear()
+            REPLICA_UP_STATUS.labels(host=self.repl.host).set(
+                1 if self.state.replica == MysqlStatus.UP.value else 0
+            )
 
     def switch_src_and_repl(self): 
         self._log(f"Switching src[{self.src.host}] and repl[{self.repl.host}]")
@@ -114,12 +146,14 @@ class ClusterManager:
         if self.is_server_up(self.repl, retry=1):
             self.state.replica = MysqlStatus.UP.value 
             problems = self.repl.find_replication_problems()
+            if MysqlReplicationProblem.NOT_REPLICA.value in problems: 
+                self.state.replica = MysqlStatus.NOT_REPLICA.value
+                return
             if ( 
                 MysqlReplicationProblem.SQL_THREAD_NOT_RUNNING.value in problems 
                 or MysqlReplicationProblem.IO_THREAD_NOT_RUNNING.value in problems
-                or MysqlReplicationProblem.NOT_REPLICA.value in problems
             ):
-                self.state.replica = MysqlStatus.NOT_REPLICATING.value
+                self.state.replica = MysqlStatus.REPLICATION_THREADS_STOPPED.value
         else: 
             self.state.replica = MysqlStatus.DOWN.value
         
@@ -203,6 +237,7 @@ class ClusterManager:
         self.start_mysql_replication()
         self.proxysqls[0].add_backend(self.repl, 1, False)
         self.state.old_master_joined = True
+        SUCCESSFUL_FAILOVERS.inc()
 
     def start(self):
         # TODO: make proxysql and src initial setup idempotent

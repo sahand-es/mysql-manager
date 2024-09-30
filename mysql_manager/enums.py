@@ -3,7 +3,8 @@ from enum import Enum
 class MysqlStatus(Enum):
     UP = "up"
     DOWN = "down"
-    NOT_REPLICATING = "not_replicating"
+    NOT_REPLICA = "not_replica"
+    REPLICATION_THREADS_STOPPED = "replication_threads_stopped"
 
 class MysqlReplicationProblem(Enum):
     IO_THREAD_NOT_RUNNING = 1 

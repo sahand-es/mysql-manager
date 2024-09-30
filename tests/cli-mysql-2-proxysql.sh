@@ -8,7 +8,8 @@ docker compose up -d
 docker build ./../ -t mysql-manager:latest
 docker run -d \
     -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
-    --network mysql-manager_default --name mm mysql-manager:latest 
+    --network mysql-manager_default --name mm \
+    -p 8000:8000 mysql-manager:latest 
 sleep 60
 
 

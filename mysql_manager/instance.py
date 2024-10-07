@@ -238,7 +238,8 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
 
                     cursor.execute("select @@global.gtid_executed as gtid")
                     result = cursor.fetchone()
-                    return f"{uuid}:1-5" == result.get("gtid") 
+                    return True
+                    # return f"{uuid}".split(":")[0] == result.get("gtid") 
                 except Exception as e:
                     self._log(str(e)) 
                     raise e

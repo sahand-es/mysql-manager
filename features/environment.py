@@ -11,6 +11,4 @@ def before_scenario(context, scenario):
     context.test_env = TestEnvironmentFactory()
 
 def after_scenario(context, scenario):
-    import time
-    time.sleep(70)
     context.test_env.stop()

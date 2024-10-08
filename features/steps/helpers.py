@@ -1,9 +1,14 @@
+import time
 import xmltodict
 import logging
 from behave import *
 
 
 logger = logging.getLogger(__name__)
+
+@given('sleep {n:d} seconds')
+def sleep(context, n):
+    time.sleep(n)
 
 @given('setup default proxysql with name: {name:w} and image: {image}')
 def start_default_proxysql(context, name, image):
@@ -30,6 +35,14 @@ def start_mysql_manager(context, name):
         {"name": name, "image": context.mysql_manager_image}
     )
 
+@given('stop mysql with server_id {server_id:d}')
+def start_mysql(context, server_id):
+    context.test_env.stop_mysql(server_id)
+
+@given('start mysql with server_id {server_id:d}')
+def stop_mysql(context, server_id):
+    context.test_env.start_mysql(server_id)
+
 @given('restart mysql manager')
 def restart_mysql_manager(context):
     context.test_env.restart_mysql_manager()
@@ -37,7 +50,7 @@ def restart_mysql_manager(context):
 
 @when('execute mysql query with user: {user:w}, password: {password:w}, host: {host} and port: {port} query: {query}')
 def exec_query(context, user, password, host, port, query):
-    mysql = context.test_env.mysqls[0]
+    mysql = context.test_env.get_one_up_mysql()
     command = f"""mysql -u{user} -p{password} -h {host} -P {port} -e "{query}"
 """
     mysql.exec(command)
@@ -45,7 +58,7 @@ def exec_query(context, user, password, host, port, query):
 @then('result of query: "{query}" with user: {user:w} and password: {password: w} on host: {host} and port: {port} should be')
 def evaluate_query_result(context, query, user, password, host, port):
     result = context.text
-    mysql = context.test_env.mysqls[0]
+    mysql = context.test_env.get_one_up_mysql()
     command = f"""mysql -u{user} -p{password} -h {host} -P {port} -X -e "{query}"
 """
     output = mysql.exec(command).output.decode()

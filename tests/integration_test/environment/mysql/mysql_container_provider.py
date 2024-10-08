@@ -30,7 +30,6 @@ class MysqlContainerProvider(ComponentProvider):
         self.root_password = root_password
         self.server_id = server_id
         self.config = config
-
     
     def _write_config(self) -> str:
         config_path = os.path.join(

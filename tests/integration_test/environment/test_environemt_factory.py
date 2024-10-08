@@ -96,6 +96,11 @@ mysql_variables=
         }
         return yaml.dump(res)
 
+    def get_one_up_mysql(self):
+        for mysql in self.mysqls:
+            if mysql.is_up:
+                return mysql
+
     def setup_mysql(self, mysql):
         component = MysqlContainerProvider(
             server_id=mysql["server_id"],
@@ -153,6 +158,17 @@ mysql_variables=
         self.mysql_manager.destroy()
         self.network.remove()
 
+    def stop_mysql(self, server_id: int):
+        for mysql in self.mysqls:
+            if mysql.server_id == server_id:
+                mysql.destroy()
+    
+    def start_mysql(self, server_id: int):
+        for mysql in self.mysqls:
+            if mysql.server_id == server_id:
+                mysql.setup()
+                mysql.start()
+    
     def restart_mysql_manager(self):
         self.mysql_manager.destroy()
         self.setup_mysql_manager(

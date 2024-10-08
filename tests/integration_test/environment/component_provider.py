@@ -11,12 +11,14 @@ class ComponentProvider:
         network: Network, 
         image: str,
         component: Type[DockerContainer],
-        component_kwargs: dict = {}
+        component_kwargs: dict = {},
+        is_up: bool = True
     ) -> None:
         self.name = name
         self.image = image
         self.network = network
         self.component = component(image, **component_kwargs)
+        self.is_up = is_up
 
     def setup(self) -> None:
         self.component.with_name(
@@ -30,9 +32,11 @@ class ComponentProvider:
         )
 
     def start(self):
+        self.is_up = True
         self.component.start()
 
     def destroy(self):
+        self.is_up = False
         self.component.stop()
 
     def exec(self, command):

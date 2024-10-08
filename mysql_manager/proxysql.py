@@ -72,6 +72,7 @@ class ProxySQL(BaseServer):
         with db: 
             with db.cursor() as cursor:
                 try: 
+                    ## TODO: delete all old servers and configs
                     cursor.execute("INSERT INTO mysql_replication_hostgroups (writer_hostgroup,reader_hostgroup,comment) VALUES (0,1,'main')")
                     cursor.execute("load mysql servers to runtime")
                     cursor.execute("save mysql servers to disk")
@@ -79,7 +80,6 @@ class ProxySQL(BaseServer):
                     cursor.execute(f"UPDATE global_variables SET variable_value='{self.monitor_password}' WHERE variable_name='mysql-monitor_password'")
                     cursor.execute("load mysql variables to runtime")
                     cursor.execute("save mysql variables to disk")
-                    ## TODO: make read write split optional
                     # cursor.execute("INSERT INTO mysql_query_rules (active, match_digest, destination_hostgroup, apply) VALUES (1, '^SELECT.*', 1, 0)")
                     # cursor.execute("load mysql query rules to runtime")
                     # cursor.execute("save mysql query rules to disk")

@@ -26,5 +26,10 @@ class MysqlConfigProblem(Enum):
     NO_PROBLEM = 0
 
 
+class MysqlClusterState(Enum):
+    CREATED = "created" 
+    NEW = "new"
+
+
 # class ProxySQLBackendState(Enum): 
 #     REPLICA =     

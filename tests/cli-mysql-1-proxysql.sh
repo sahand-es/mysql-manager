@@ -1,16 +1,22 @@
 #!/bin/bash
 
+source ./setup-etcd.sh
+
 echo "Creating servers..."
 docker compose down
 docker rm -f mm
 
 docker compose up -d 
+setup_user 
 docker build ./../ -t mysql-manager:latest
 docker run -d \
     -v ./config/mm-config-mysql-1.yaml:/etc/mm/cluster-spec.yaml \
     --network mysql-manager_default --name mm \
-    -p 8000:8000 mysql-manager:latest 
+    -e ETCD_HOST=etcd -e ETCD_USERNAME=mm -e ETCD_PASSWORD=password -e ETCD_PREFIX=mm/cluster1/ \
+    -p 8000:8000 mysql-manager:latest
+docker exec mm python cli/mysql-cli.py init -f /etc/mm/cluster-spec.yaml
 sleep 30
+
 
 echo -e "\n\nCreating db through proxysql..."
 docker compose exec mysql-s1 mysql -uhamadmin -ppassword -h proxysql -e "use hamdb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');"

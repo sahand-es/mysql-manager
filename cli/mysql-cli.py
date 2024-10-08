@@ -5,6 +5,7 @@ from configparser import ConfigParser
 import click
 import yaml
 
+from mysql_manager.etcd import EtcdClient
 from mysql_manager.cluster import ClusterManager
 from mysql_manager.constants import (
     DEFAULT_CONFIG_PATH,
@@ -16,7 +17,7 @@ from mysql_manager.exceptions import ProgramKilled
 
 current_dir = os.getcwd()
 BASE_DIR = os.path.abspath(os.path.join(current_dir, os.pardir))
-
+etcd_client = EtcdClient()
 
 def read_config_file(config_file):
     config = ConfigParser()
@@ -57,6 +58,23 @@ def cli(ctx):
 def mysql(ctx):
     pass
 
+@cli.command()
+@click.option('-f', '--file', help='MySQL cluster spec file', required=False)
+@click.option('-s', '--spec', help='MySQL cluster spec', required=False)
+def init(file, spec):
+    with open(file, "r") as sf:
+        etcd_client.write_spec(yaml.safe_load(sf.read()))
+    
+    etcd_client.write_status(
+        {
+            "source": None,
+            "replica": None,
+            "replicaJoined": "false",
+            "sourceFailureCount": 0,
+            "state": "new", 
+        }
+    )
+
 
 @mysql.command()
 @click.option('-n', '--name', help='MySQL name', required=True)
@@ -79,6 +97,7 @@ def add(ctx, name, host, user, password, port):
 
     with open(DEFAULT_CONFIG_PATH, 'w') as configfile:
         config.write(configfile)
+
 
 
 @mysql.command()
@@ -169,12 +188,12 @@ def start_cluster(nodes: int):
 def get_cluster_status():
     # config = ConfigParser() 
     # config.read(CLUSTER_STATE_FILE_PATH)
-     
-    with open(CLUSTER_STATE_FILE_PATH, "r") as sf:
-        state = yaml.safe_load(sf)
+    state = etcd_client.read_status()
 
-    print("master="+state.get("master"))
-    print("replica="+state.get("replica"))
+
+    print("master="+state["source"].get("state"))
+    if state["replica"] is not None: 
+        print("replica="+state["replica"].get("state"))
 
 
 @mysql.command()

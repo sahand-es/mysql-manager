@@ -1,15 +1,20 @@
 #!/bin/bash
 
+source ./setup-etcd.sh
+
 echo "Creating servers..."
 docker compose down
 docker rm -f mm
 
 docker compose up -d 
+setup_user 
 docker build ./../ -t mysql-manager:latest
 docker run -d \
     -v ./config/mm-config-mysql-1.yaml:/etc/mm/cluster-spec.yaml \
     --network mysql-manager_default --name mm \
+    -e ETCD_HOST=etcd -e ETCD_USERNAME=mm -e ETCD_PASSWORD=password -e ETCD_PREFIX=mm/cluster1/ \
     -p 8000:8000 mysql-manager:latest
+docker exec mm python cli/mysql-cli.py init -f /etc/mm/cluster-spec.yaml
 sleep 30
 
 echo -e "\n\nCreating db through proxysql..."
@@ -32,6 +37,7 @@ echo -e "\n\nAdding replica to master..."
 docker rm -f mm 
 docker run -d \
     -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
+    -e ETCD_HOST=etcd -e ETCD_USERNAME=mm -e ETCD_PASSWORD=password -e ETCD_PREFIX=mm/cluster1/ \
     --network mysql-manager_default --name mm mysql-manager:latest
 sleep 30 
 

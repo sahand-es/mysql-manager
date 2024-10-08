@@ -4,6 +4,7 @@ from dataclasses import asdict
 from prometheus_client import start_http_server
 
 from mysql_manager.instance import MysqlInstance
+from mysql_manager.etcd import EtcdClient
 from mysql_manager.dto import ClusterStateDTO
 from mysql_manager.base import BaseServer
 from mysql_manager.proxysql import ProxySQL
@@ -39,7 +40,8 @@ class ClusterManager:
             old_master_joined=True,
             master_failure_count=0,
         )
-        self._read_config_file()
+        self.etcd_client = EtcdClient()
+        self._load_config()
 
         # Start Prometheus metrics server on port 8000
         start_http_server(8000)
@@ -51,9 +53,8 @@ class ClusterManager:
         if len(spec["mysqls"]) == 0 or len(spec["proxysqls"]) == 0: 
             raise MysqlClusterConfigError()
         
-    def _read_config_file(self):
-        with open(self.config_file, "r") as f:
-            spec = yaml.safe_load(f)["clusterSpec"]
+    def _load_config(self):
+        spec = self.etcd_client.read()
 
         self._validate_config(spec)
         self.src = MysqlInstance(**spec["mysqls"][0])

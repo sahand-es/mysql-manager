@@ -2,7 +2,6 @@ import xmltodict
 import logging
 from behave import *
 
-from mysql_manager.cluster import ClusterManager
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,10 @@ def start_mysql_manager(context, name):
     context.test_env.setup_mysql_manager(
         {"name": name, "image": context.mysql_manager_image}
     )
-    context.test_env.start()
+
+@given('restart mysql manager')
+def restart_mysql_manager(context):
+    context.test_env.restart_mysql_manager()
 
 
 @when('execute mysql query with user: {user:w}, password: {password:w}, host: {host} and port: {port} query: {query}')
@@ -49,6 +51,4 @@ def evaluate_query_result(context, query, user, password, host, port):
     output = mysql.exec(command).output.decode()
     output = output.split("mysql: [Warning] Using a password on the command line interface can be insecure.\n")
     output = output[1]
-    if query == "SELECT * FROM monitor.mysql_server_connect_log ORDER BY time_start_us DESC LIMIT 6;":
-        print(xmltodict.parse(output), "outputttttttt", "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
     assert xmltodict.parse(output) == xmltodict.parse(result)

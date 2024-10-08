@@ -25,6 +25,8 @@ class ComponentProvider:
             self.network
         ).with_network_aliases(
             self.name
+        ).with_kwargs(
+            restart_policy={"Name": "always"}
         )
 
     def start(self):

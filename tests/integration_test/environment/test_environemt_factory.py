@@ -23,7 +23,7 @@ enforce-gtid-consistency = ON
 log-bin = binlog
 relay-log = relaylog
 datadir = /var/lib/mysql
-binlog_expire_logs_seconds = 59200
+binlog_expire_logs_seconds = 259200
 binlog_expire_logs_auto_purge = ON
 max_binlog_size = 104857600
 slow_query_log = 1
@@ -97,35 +97,43 @@ mysql_variables=
         return yaml.dump(res)
 
     def setup_mysql(self, mysql):
-        self.mysqls.append(
-            MysqlContainerProvider(
-                server_id=mysql["server_id"],
-                name=f"mysql-s{mysql['server_id']}",
-                network=self.network,
-                image=mysql["image"],
-                config=self._get_default_mysql_config_template().format(mysql["server_id"])
-            )
+        component = MysqlContainerProvider(
+            server_id=mysql["server_id"],
+            name=f"mysql-s{mysql['server_id']}",
+            network=self.network,
+            image=mysql["image"],
+            config=self._get_default_mysql_config_template().format(mysql["server_id"])
         )
+        self.mysqls.append(
+            component 
+        )
+        component.setup()
+        component.start()
+        time.sleep(10)
 
     def setup_proxysql(self, proxysql):
-        self.proxysqls.append(
-            ProxysqlContainerProvider(
-                name=proxysql["name"],
-                network=self.network,
-                image=proxysql["image"],
-                local_username=proxysql["local_username"],
-                local_password=proxysql["local_password"],
-                remote_username=proxysql["remote_username"],
-                remote_password=proxysql["remote_password"],
-                config=self._get_default_proxysql_config_template().format(
-                    proxysql["local_username"], 
-                    proxysql["local_password"],
-                    proxysql["remote_username"], 
-                    proxysql["remote_password"],
-                )
+        component = ProxysqlContainerProvider(
+            name=proxysql["name"],
+            network=self.network,
+            image=proxysql["image"],
+            local_username=proxysql["local_username"],
+            local_password=proxysql["local_password"],
+            remote_username=proxysql["remote_username"],
+            remote_password=proxysql["remote_password"],
+            config=self._get_default_proxysql_config_template().format(
+                proxysql["local_username"], 
+                proxysql["local_password"],
+                proxysql["remote_username"], 
+                proxysql["remote_password"],
             )
         )
-    
+        self.proxysqls.append(
+            component 
+        )
+        component.setup()
+        component.start()
+        time.sleep(10)
+
     def setup_mysql_manager(self, mysql_manager):
         self.mysql_manager = MysqlManagerContainerProvider(
             name=mysql_manager["name"],
@@ -133,19 +141,9 @@ mysql_variables=
             image=mysql_manager["image"],
             config=self._get_mysql_manager_config()
         )
-
-    def start(self):
-        for mysql in self.mysqls:
-            mysql.setup()
-            mysql.start()
-        for proxysql in self.proxysqls:
-            proxysql.setup()
-            proxysql.start()
-        time.sleep(10) 
         self.mysql_manager.setup()
         self.mysql_manager.start()
-        time.sleep(10) 
-
+        time.sleep(10)
 
     def stop(self):
         for mysql in self.mysqls:
@@ -154,3 +152,10 @@ mysql_variables=
             proxysql.destroy()
         self.mysql_manager.destroy()
         self.network.remove()
+
+    def restart_mysql_manager(self):
+        self.mysql_manager.destroy()
+        self.setup_mysql_manager(
+            {"name": self.mysql_manager.name, "image": self.mysql_manager.image}
+        )
+        time.sleep(50) 

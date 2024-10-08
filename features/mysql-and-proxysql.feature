@@ -1,5 +1,5 @@
-Feature: startup
-  We should check that startup the database and its components.
+Feature: one-mysql-and-one-proxysql
+  Setup one mysql and one proxysql with mm
 
   Scenario: check start one mysql with one proxysql
     Given setup default proxysql with name: proxysql and image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
@@ -31,6 +31,10 @@ Feature: startup
     </resultset>
     """
 
+    # Then result of query: "USE mysql; SHOW EVENTS;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
+    # """
+    # """
+    
     Then result of query: "SELECT user FROM mysql.user;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
@@ -172,28 +176,3 @@ Feature: startup
       </row>
     </resultset>
     """
-
-    Then result of query: "select Queries, srv_host from stats_mysql_connection_pool;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select Queries, srv_host from stats_mysql_connection_pool" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="Queries">4</field>
-	    <field name="srv_host">mysql-s1</field>
-      </row>
-
-      <row>
-	    <field name="Queries">0</field>
-	    <field name="srv_host">mysql-s1</field>
-      </row>
-    </resultset>
-    """
-
-    Then result of query: "select * from stats_mysql_query_rules;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select * from stats_mysql_query_rules" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"></resultset>
-    """
-

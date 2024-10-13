@@ -29,10 +29,59 @@ def start_proxysql(context, server_id, image):
         {"server_id": server_id, "image": image}
     )
 
-@given('setup mysql_manager with name {name:w}')
-def start_mysql_manager(context, name):
+@given('setup mysql_manager with name {name:w} with env ETCD_HOST={etcd_host:w} ETCD_USERNAME={etcd_username:w} ETCD_PASSWORD={etcd_password:w} ETCD_PREFIX={etcd_prefix}')
+def start_mysql_manager(context, name, etcd_host, etcd_username, etcd_password, etcd_prefix):
+    envs = {
+        "ETCD_HOST": etcd_host,
+        "ETCD_USERNAME": etcd_username,
+        "ETCD_PASSWORD": etcd_password,
+        "ETCD_PREFIX": etcd_prefix
+    }
     context.test_env.setup_mysql_manager(
-        {"name": name, "image": context.mysql_manager_image}
+        {"name": name, "image": context.mysql_manager_image, "envs": envs}
+    )
+
+@given('setup etcd with name {name:w} and image: {image}')
+def start_etcd(context, name, image):
+    context.test_env.setup_etcd(
+        {"name": name, "image": image}
+    )
+
+@given('setup user root with password: {password} for etcd')
+def setup_root_user_for_etcd(context, password):
+    context.test_env.etcd.exec(
+        f'etcdctl user add root --new-user-password=f"{password}"',
+    )
+    context.test_env.etcd.exec(
+        'etcdctl user grant-role root root'
+    )
+
+@given('setup user {name:w} for etcd with password: {password} access to path {path}')
+def setup_user_for_etcd(context, name, password, path):
+    context.test_env.etcd.exec(
+        f'etcdctl user add {name} --new-user-password="{password}"'
+    )
+    
+    context.test_env.etcd.exec(
+        f'etcdctl role add {name}'
+    )
+    
+    context.test_env.etcd.exec(
+        f'etcdctl role grant-permission {name} --prefix=true readwrite {path}'
+    )
+    
+    context.test_env.etcd.exec(
+        f'etcdctl user grant-role {name} {name}'
+    )
+    
+    context.test_env.etcd.exec(
+        f'etcdctl auth enable'
+    )
+
+@given('init mysql cluster spec')
+def setup_user_for_etcd(context,):
+    context.test_env.mysql_manager.exec(
+        f'python cli/mysql-cli.py init -f /etc/mm/cluster-spec.yaml'
     )
 
 @given('stop mysql with server_id {server_id:d}')

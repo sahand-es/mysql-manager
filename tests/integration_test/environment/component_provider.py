@@ -42,3 +42,7 @@ class ComponentProvider:
     def exec(self, command):
         return self.component.exec(command)
 
+    def set_env(self, envs: dict):
+        for key, value in envs.items():
+            self.component.with_env(key, value) 
+

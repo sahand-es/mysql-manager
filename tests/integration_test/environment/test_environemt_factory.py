@@ -1,6 +1,7 @@
 import yaml
 import time
 from testcontainers.core.container import Network
+from tests.integration_test.environment.etcd.etcd_container_provider import EtcdContainerProvider
 from tests.integration_test.environment.mysql.mysql_container_provider import MysqlContainerProvider
 from tests.integration_test.environment.mysql_manager.mysql_manager_container_provider import MysqlManagerContainerProvider
 from tests.integration_test.environment.proxysql.proxysql_container_provider import ProxysqlContainerProvider
@@ -13,6 +14,7 @@ class TestEnvironmentFactory:
         self.mysqls = []
         self.proxysqls = []
         self.mysql_manager = None
+        self.etcd = None
         self.network = Network().create()
 
     def _get_default_mysql_config_template(self):
@@ -69,30 +71,28 @@ mysql_variables=
 
     def _get_mysql_manager_config(self):
         res = {
-            "clusterSpec": {
-                "mysqls": [
-                    {
-                        "host": mysql.name, 
-                        "user": mysql.root_username, 
-                        "password": mysql.root_password
-                    } for mysql in self.mysqls
-                ],
-                "proxysqls":[
-                    {
-                        "host": proxysql.name, 
-                        "user": proxysql.remote_username, 
-                        "password": proxysql.remote_password
-                    } for proxysql in self.proxysqls
-                ],
-                "users": {
-                    "replPassword": "password",
-                    "exporterPassword": "exporter",
-                    "nonprivPassword": "password",
-                    "nonprivUser": "hamadmin",
-                    "proxysqlMonPassword": "password",
-                },
-                "readonlyMysqls": []
+            "mysqls": [
+                {
+                    "host": mysql.name, 
+                    "user": mysql.root_username, 
+                    "password": mysql.root_password
+                } for mysql in self.mysqls
+            ],
+            "proxysqls":[
+                {
+                    "host": proxysql.name, 
+                    "user": proxysql.remote_username, 
+                    "password": proxysql.remote_password
+                } for proxysql in self.proxysqls
+            ],
+            "users": {
+                "replPassword": "password",
+                "exporterPassword": "exporter",
+                "nonprivPassword": "password",
+                "nonprivUser": "hamadmin",
+                "proxysqlMonPassword": "password",
             },
+            "readonlyMysqls": []
         }
         return yaml.dump(res)
 
@@ -146,9 +146,19 @@ mysql_variables=
             image=mysql_manager["image"],
             config=self._get_mysql_manager_config()
         )
+        self.mysql_manager.set_env(mysql_manager["envs"])
         self.mysql_manager.setup()
         self.mysql_manager.start()
         time.sleep(10)
+    
+    def setup_etcd(self, etcd):
+        self.etcd = EtcdContainerProvider(
+            name=etcd["name"],
+            network=self.network,
+            image=etcd["image"],
+        )
+        self.etcd.setup()
+        self.etcd.start()
 
     def stop(self):
         for mysql in self.mysqls:

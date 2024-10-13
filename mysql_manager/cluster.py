@@ -45,7 +45,7 @@ class ClusterManager:
     def _log(self, msg) -> None:
         print(str(datetime.datetime.now()) + "  " + msg)
 
-    def _validate_cluster_spec(self, spec: dict): 
+    def _validate_cluster_spec(self, spec: dict):
         if len(spec["mysqls"]) == 0 or len(spec["proxysqls"]) == 0: 
             raise MysqlClusterConfigError()
         

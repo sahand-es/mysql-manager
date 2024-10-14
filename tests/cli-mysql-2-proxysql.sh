@@ -1,16 +1,22 @@
 #!/bin/bash
 
 echo -e "\U1F6A7 Creating servers..."
+source ./setup-etcd.sh
+
+echo "Creating servers..."
 docker compose down
 docker rm -f mm
 
 docker compose up -d 
+setup_user
 docker build ./../ -t mysql-manager:latest
 docker run -d \
     -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
     --network mysql-manager_default --name mm \
-    -p 8000:8000 mysql-manager:latest 
-sleep 60
+    -e ETCD_HOST=etcd -e ETCD_USERNAME=mm -e ETCD_PASSWORD=password -e ETCD_PREFIX=mm/cluster1/ \
+    -p 8000:8000 mysql-manager:latest
+docker exec mm python cli/mysql-cli.py init -f /etc/mm/cluster-spec.yaml
+sleep 30
 
 
 echo -e "\n\n\U1F4BB Creating db in master..."
@@ -71,12 +77,12 @@ echo -e "\n\nTesting cluster status..."
 echo -e "\n[Case 1]: up, up"
 docker exec mm python /app/cli/mysql-cli.py mysql get-cluster-status 
 
-echo -e "\n[Case 2]: up, not_replicating"
+echo -e "\n[Case 2]: up, replication_threads_stopped"
 docker compose exec mysql-s2 mysql -uroot -proot -e "stop replica io_thread"
 sleep 5
 docker exec mm python /app/cli/mysql-cli.py mysql get-cluster-status 
 
-echo -e "\n[Case 3]: up, not_replicating"
+echo -e "\n[Case 3]: up, replication_threads_stopped"
 docker compose exec mysql-s2 mysql -uroot -proot -e "start replica io_thread"
 docker compose exec mysql-s2 mysql -uroot -proot -e "stop replica sql_thread"
 sleep 5
@@ -94,7 +100,9 @@ echo -e "\n\nTesting mysql manager restart..."
 docker rm -f mm
 docker run -d \
     -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
-    --network mysql-manager_default --name mm mysql-manager:latest 
+    --network mysql-manager_default --name mm \
+    -e ETCD_HOST=etcd -e ETCD_USERNAME=mm -e ETCD_PASSWORD=password -e ETCD_PREFIX=mm/cluster1/ \
+    -p 8000:8000 mysql-manager:latest
 sleep 30
 docker logs mm --tail 40
 sleep 5

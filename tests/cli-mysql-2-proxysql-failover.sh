@@ -1,18 +1,21 @@
 #!/bin/bash
 
+source ./setup-etcd.sh
+
 echo "Creating servers..."
 docker compose down
 docker rm -f mm
 
-docker compose up -d 
+docker compose up -d
+setup_user
 docker build ./../ -t mysql-manager:latest
 docker run -d \
     -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
     --network mysql-manager_default --name mm \
+    -e ETCD_HOST=etcd -e ETCD_USERNAME=mm -e ETCD_PASSWORD=password -e ETCD_PREFIX=mm/cluster1/ \
     -p 8000:8000 mysql-manager:latest
-sleep 60
-docker logs mm --tail 20
-sleep 5
+docker exec mm python cli/mysql-cli.py init -f /etc/mm/cluster-spec.yaml
+sleep 30
 
 echo -e "\n\nCreating db through proxysql..."
 docker compose exec mysql-s1 mysql -uhamadmin -ppassword -h proxysql -e "use hamdb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');"
@@ -20,9 +23,7 @@ sleep 5
 
 echo -e "\n\nTesting failover..."
 docker compose stop mysql-s1 
-sleep 30
-docker logs mm --tail 20
-sleep 5
+sleep 20
 docker compose exec mysql-s2 mysql -uroot -proot -e "show replica status\G"
 sleep 5
 docker compose exec mysql-s2 mysql -uroot -proot -e "show master status"
@@ -62,7 +63,7 @@ sleep 5
 
 echo -e "\n\nStarting old master..."
 docker compose up -d mysql-s1
-sleep 30 
+sleep 20
 docker logs mm --tail 20
 sleep 5
 docker compose exec mysql-s2 mysql -uhamadmin -ppassword -h proxysql -e "use hamdb; INSERT INTO t1 VALUES (2, 'Jackie');"
@@ -85,10 +86,10 @@ echo -e "\n\nTesting mysql manager restart..."
 docker rm -f mm
 docker run -d \
     -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
-    --network mysql-manager_default --name mm mysql-manager:latest
-sleep 30
-docker logs mm --tail 40
-sleep 5
+    --network mysql-manager_default --name mm \
+    -e ETCD_HOST=etcd -e ETCD_USERNAME=mm -e ETCD_PASSWORD=password -e ETCD_PREFIX=mm/cluster1/ \
+    -p 8000:8000 mysql-manager:latest
+sleep 20
 docker compose exec mysql-s2 mysql -uroot -proot -e "show replica status\G"
 sleep 5
 docker compose exec mysql-s2 mysql -uroot -proot -e "show master status"

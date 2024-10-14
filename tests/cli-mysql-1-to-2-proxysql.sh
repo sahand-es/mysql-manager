@@ -34,11 +34,12 @@ echo -e "\n\nPurge master binary logs..."
 docker compose exec mysql-s1 mysql -uroot -proot -e "purge binary logs before now()"
 
 echo -e "\n\nAdding replica to master..."
-docker rm -f mm 
-docker run -d \
-    -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
-    -e ETCD_HOST=etcd -e ETCD_USERNAME=mm -e ETCD_PASSWORD=password -e ETCD_PREFIX=mm/cluster1/ \
-    --network mysql-manager_default --name mm mysql-manager:latest
+# docker rm -f mm 
+# docker run -d \
+#     -v ./config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml \
+#     -e ETCD_HOST=etcd -e ETCD_USERNAME=mm -e ETCD_PASSWORD=password -e ETCD_PREFIX=mm/cluster1/ \
+#     --network mysql-manager_default --name mm mysql-manager:latest
+docker exec mm python cli/mysql-cli.py add -h mysql-s2 -u root -p root -n s2
 sleep 30 
 
 echo -e "\n\nChecking new replica..."

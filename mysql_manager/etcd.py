@@ -20,6 +20,14 @@ class EtcdClient:
         )
         return client
 
+    def write_cluster_data(self, cluster_data: dict):
+        self.write(yaml.safe_dump(cluster_data), path="cluster_data")
+
+    def read_cluster_data(self) -> dict: 
+        cluster_data = self.read(path="cluster_data")
+        if cluster_data is not None:
+            return yaml.safe_load(cluster_data.decode())
+
     def write_spec(self, spec: dict) -> None: 
         self.write(yaml.safe_dump(spec), path="spec")
 

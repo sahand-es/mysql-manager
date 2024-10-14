@@ -1,8 +1,8 @@
 mysqls:
-- host: mysql-s1
-  user: root
-  password: root
-readonlyMysqls: []
+  s1:
+    host: mysql-s1
+    user: root
+    password: root
 proxysqls: 
 - host: proxysql
   user: radmin 

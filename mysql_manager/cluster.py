@@ -5,15 +5,16 @@ from prometheus_client import start_http_server
 
 from mysql_manager.instance import MysqlInstance
 from mysql_manager.etcd import EtcdClient
-from mysql_manager.dto import ClusterStateDTO
+from mysql_manager.dto import ClusterData
 from mysql_manager.base import BaseServer
 from mysql_manager.proxysql import ProxySQL
 from mysql_manager.enums import (
     MysqlReplicationProblem,
     MysqlStatus,
     MysqlClusterState,
+    MysqlRoles,
 )
-
+from mysql_manager.cluster_data_handler import ClusterDataHandler
 from mysql_manager.exceptions import (
     MysqlConnectionException,
     MysqlClusterConfigError,
@@ -35,10 +36,7 @@ class ClusterManager:
         self.proxysqls: list[ProxySQL] = [] 
         self.users: dict = {} 
         self.config_file = config_file
-        self.cluster_status = {
-            "source": {},
-            "replica": {},
-        }
+        self.cluster_data_handler = ClusterDataHandler()
         self.etcd_client = EtcdClient()
 
         # Start Prometheus metrics server on port 8000
@@ -52,30 +50,20 @@ class ClusterManager:
             raise MysqlClusterConfigError()
         
     def _load_cluster_data(self):
-        spec = self.etcd_client.read_spec()
-        self._validate_cluster_spec(spec)
+        # spec = self.etcd_client.read_spec()
+        # self._validate_cluster_spec(spec)
+        
+        self.users = self.cluster_data_handler.get_users()
+        for name, mysql in self.cluster_data_handler.get_mysqls().items():
+            if mysql.role == MysqlRoles.SOURCE.value:
+                if self.src is None or self.src.name != name: 
+                    self.src = MysqlInstance(name=name, **asdict(mysql))
+            elif mysql.role ==  MysqlRoles.REPLICA.value:
+                self.repl = MysqlInstance(name=name, **asdict(mysql))
 
-        status = self.etcd_client.read_status()
-        if status["state"] == MysqlClusterState.NEW.value:
-            self.src = MysqlInstance(**spec["mysqls"][0])
-            status["source"] = spec["mysqls"][0]
-
-            if len(spec["mysqls"]) == 2: 
-                self.repl = MysqlInstance(**spec["mysqls"][1])
-                status["replica"] = spec["mysqls"][1]
-
-            self.etcd_client.write_status(status)
-        else: 
-            self.src = MysqlInstance(**status["source"][0])
-            if status["replica"] is not None:
-                self.repl = MysqlInstance(**status["replica"][0])
-
-        self.cluster_status = status
-
-        self.users = spec["users"]
         self.proxysqls.append(
             ProxySQL(
-                **spec["proxysqls"][0], 
+                **self.cluster_data_handler.get_proxysql(), 
                 mysql_user=self.users["nonprivUser"],
                 mysql_password=self.users["nonprivPassword"],
                 monitor_user="proxysql",
@@ -83,121 +71,151 @@ class ClusterManager:
             ),
         )
         
-    def is_cluster_data_available(self) -> bool:
-        clusterData = self.etcd_client.read_spec()
-        if clusterData is None:
-            return False
+    # def is_cluster_data_available(self) -> bool:
+    #     clusterData = self.etcd_client.read_spec()
+    #     if clusterData is None:
+    #         return False
     
-        return True
+    #     return True
     
     def run(self):
-        while not self.is_cluster_data_available(): 
+        while not self.cluster_data_handler.is_cluster_data_available(): 
             time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
             self._log("Cluster data not available. Waiting for it...")
 
+        self._load_cluster_data()
         self.start()
         while True: 
             self._log("Checking cluster state...")
             time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
+            self._load_cluster_data()
             self.reconcile_cluster()
 
+    def must_replica_join_source(self, repl: MysqlInstance) -> bool:
+        # in the first two checks, if replica is not available we return True to 
+        # prevent useless start replication attempts
+        if self.repl is None:
+            return True
+        if not self.is_server_up(self.repl):
+            return True
+        ## TODO: actually check if replica is replicating from source
+        if self.repl.is_replica():
+            return True
+
+        return False
+    
     def reconcile_cluster(self):
         self._log("Running reconciliation for cluster")
-        if self.cluster_status["replicaJoined"] == "false": 
-            self.add_replica_to_master(retry=1)
 
         self.update_cluster_state()
-        replica = self.repl.host if self.repl is not None else None
-        self._log(str(self.cluster_status))
+        # self._log(str(self.cluster_status))
         self._set_status_metrics()
 
         if self.repl is not None:  
+            if not self.must_replica_join_source(self.repl): 
+                self.add_replica_to_source(retry=1)
             if (
-                self.cluster_status["replica"].get("state") == MysqlStatus.REPLICATION_THREADS_STOPPED.value
-                and self.cluster_status["source"].get("state") == MysqlStatus.UP.value
+                self.repl.status == MysqlStatus.REPLICATION_THREADS_STOPPED.value
+                and self.src.status == MysqlStatus.UP.value
             ):
                 self.repl.restart_replication()
                 REPLICATION_RESTARTS.inc()
             elif (
-                self.cluster_status["source"].get("state") == MysqlStatus.DOWN.value
-                and self.cluster_status["replica"].get("state") == MysqlStatus.DOWN.value
+                self.src.status == MysqlStatus.DOWN.value
+                and self.repl.status == MysqlStatus.DOWN.value
             ):
                 CLUSTER_FAILURES.inc()
                 self._log("Cluster failure detected: Master and replicas are down.")
             elif (
                 # TODO: add more checks for replica: if it was not running sql thread for
                 # a long time, if it is behind master for a long time
-                self.cluster_status["sourceFailureCount"] > MASTER_FAILURE_THRESHOLD 
-                and self.cluster_status["replica"].get("state") != MysqlStatus.DOWN.value
+                self.src.health_check_failures > MASTER_FAILURE_THRESHOLD 
+                and self.repl.status != MysqlStatus.DOWN.value
             ):
                 self._log("Running failover for cluster")
                 FAILOVER_ATTEMPTS.inc()
-
-                self.cluster_status["replicaJoined"] = "false"
+                ## TODO: what if we restart when running this 
+                ## TODO: use etcd txn
+                self.cluster_data_handler.set_mysql_role(self.src, MysqlRoles.REPLICA.value)
+                self.cluster_data_handler.set_mysql_role(self.repl, MysqlRoles.SOURCE.value)
                 self.proxysqls[0].remove_backend(self.src)
                 self.repl.reset_replication()
                 self.switch_src_and_repl()
 
-        self._log(f"Master is {self.src.host}")
+        self._log(f"Source is {self.src.host}")
         if self.repl is not None: 
             self._log(f"Replica is {self.repl.host}")
 
     def _set_status_metrics(self):
         MASTER_UP_STATUS.clear()
         MASTER_UP_STATUS.labels(host=self.src.host).set(
-            1 if self.cluster_status["source"]["state"] == MysqlStatus.UP.value else 0
+            1 if self.src.status == MysqlStatus.UP.value else 0
         )
 
         if self.repl is not None: 
             REPLICA_UP_STATUS.clear()
             REPLICA_UP_STATUS.labels(host=self.repl.host).set(
-                1 if self.cluster_status["source"]["state"] == MysqlStatus.UP.value else 0
+                1 if self.repl.status == MysqlStatus.UP.value else 0
             )
 
     def switch_src_and_repl(self): 
         self._log(f"Switching src[{self.src.host}] and repl[{self.repl.host}]")
-        ## TODO: etcd txn 
-        self.cluster_status["replica"] = {
-            "host": self.src.host,
-            "user": self.src.user,
-            "password": self.src.password,
-        }
-        self.cluster_status["source"] = {
-            "host": self.repl.host,
-            "user": self.repl.user,
-            "password": self.repl.password,
-        }
-        tmp_src = MysqlInstance(self.src.host, self.src.user, self.src.password)
-        self.src = MysqlInstance(self.repl.host, self.repl.user, self.repl.password)
-        self.repl = MysqlInstance(tmp_src.host, tmp_src.user, tmp_src.password)
+        tmp_src = MysqlInstance(
+            self.src.host, 
+            self.src.user, 
+            self.src.password,
+            self.src.name,
+            self.src.role,
+        )
+        self.src = MysqlInstance(
+            self.repl.host, 
+            self.repl.user, 
+            self.repl.password,
+            self.repl.name,
+            MysqlRoles.SOURCE.value,
+        )
+        self.repl = MysqlInstance(
+            tmp_src.host, 
+            tmp_src.user, 
+            tmp_src.password,
+            tmp_src.name,
+            MysqlRoles.REPLICA.value,
+        )
 
     def update_cluster_state(self) -> dict: 
-        if not self.is_server_up(self.src, retry=1):
-            self.cluster_status["source"]["state"] = MysqlStatus.DOWN.value
-            self.cluster_status["sourceFailureCount"] += 1
+        if self.is_server_up(self.src, retry=1):
+            self.src.status = MysqlStatus.UP.value
+            self.src.health_check_failures = 0
         else: 
-            self.cluster_status["source"]["state"] = MysqlStatus.UP.value
-            self.cluster_status["sourceFailureCount"] = 0
+            self.src.status = MysqlStatus.DOWN.value
+            self.src.health_check_failures += 1
 
         if self.repl is not None: 
             if self.is_server_up(self.repl, retry=1):
-                self.cluster_status["replica"]["state"] = MysqlStatus.UP.value 
+                self.repl.status = MysqlStatus.UP.value 
                 problems = self.repl.find_replication_problems()
                 if MysqlReplicationProblem.NOT_REPLICA.value in problems: 
-                    self.cluster_status["replica"]["state"] = MysqlStatus.NOT_REPLICA.value
+                    self.repl.status = MysqlStatus.NOT_REPLICA.value
                     return
                 if ( 
                     MysqlReplicationProblem.SQL_THREAD_NOT_RUNNING.value in problems 
                     or MysqlReplicationProblem.IO_THREAD_NOT_RUNNING.value in problems
                 ):
-                    self.cluster_status["replica"]["state"] = MysqlStatus.REPLICATION_THREADS_STOPPED.value
+                    self.repl.status = MysqlStatus.REPLICATION_THREADS_STOPPED.value
             else: 
-                self.cluster_status["replica"]["state"] = MysqlStatus.DOWN.value
+                self.repl.status = MysqlStatus.DOWN.value
         
         self._write_cluster_state()
 
     def _write_cluster_state(self):
-        self.etcd_client.write_status(self.cluster_status)
+        ## TODO: maybe change this
+        with open(CLUSTER_STATE_FILE_PATH, "w") as sf:
+            sf.write(yaml.safe_dump(
+                {
+                    "source": self.src.status,
+                    "replica": self.repl.status if self.repl is not None else MysqlStatus.DOWN.value,
+                }
+            ))
 
     def start_mysql_replication(self):
         ## TODO: reset replication all for both of them 
@@ -247,14 +265,8 @@ class ClusterManager:
         
         self.proxysqls[0].add_backend(self.src, 1, True)
 
-    def add_replica_to_master(self, retry: int=1):
-        self._log("Adding replica to master")
-        if not self.is_server_up(self.repl):
-            return 
-        
-        if self.repl is not None and self.repl.is_replica():
-            return
-            
+    def add_replica_to_source(self, retry: int=1):
+        self._log("Joining replica to source")    
         self.src.install_plugin("clone", "mysql_clone.so")
         self.repl.install_plugin("clone", "mysql_clone.so")
 
@@ -272,32 +284,22 @@ class ClusterManager:
         self.check_servers_up(retry=retry)
         self.start_mysql_replication()
         self.proxysqls[0].add_backend(self.repl, 1, False)
-        self.cluster_status["replicaJoined"] = "true"
-        self.etcd_client.write_status(self.cluster_status)
-        SUCCESSFUL_FAILOVERS.inc()
 
     def start(self):
         # TODO: make proxysql and src initial setup idempotent
-        self._load_cluster_data()
         self._log("Starting cluster setup...")
         self.check_servers_up(retry=10)
-        # if (
-        #     self.repl is not None 
-        #     and self.src.is_replica() 
-        #     and self.repl.is_master_of(self.src)
-        # ):
-        #     self.switch_src_and_repl()
 
         self._log("Initializing config of servers...")
-        if self.cluster_status["state"] == MysqlClusterState.NEW.value:
+        if self.cluster_data_handler.get_cluster_state() == MysqlClusterState.NEW.value:
             self.proxysqls[0].initialize_setup()
             self.config_src_initial_setup()
-            self.cluster_status["state"] == MysqlClusterState.CREATED.value
-            self.etcd_client.write_status(self.cluster_status)
+            ## TODO: what if we restart before writing cluster data?
+            self.cluster_data_handler.update_cluster_state(MysqlClusterState.CREATED.value)
 
-        if (
-            self.repl is not None
-            and self.cluster_status["replicaJoined"] == "false"
-        ):
-            self.add_replica_to_master(retry=10)
+        # if (
+        #     self.repl is not None
+        #     and not self.repl.joined 
+        # ):
+        #     self.add_replica_to_master(retry=10)
 

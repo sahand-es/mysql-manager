@@ -4,6 +4,7 @@ import pymysql
 from mysql_manager.enums import (
     MysqlConfigProblem,
     MysqlReplicationProblem,
+    MysqlStatus,
 )
 
 from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException, MysqlAddPITREventException
@@ -11,13 +12,18 @@ from mysql_manager.base import BaseServer
 from mysql_manager.constants import DEFAULT_DATABASE
 
 class MysqlInstance(BaseServer):
-    def __init__(self, host: str, user: str, password: str, port: int=3306) -> None:
+    def __init__(self, host: str, user: str, password: str, name: str, role: str, port: int=3306) -> None: 
         self.host = host 
         self.port = port
         self.user = user
         self.password = password
+        self.name = name
+        self.role = role
+        self.health_check_failures: int = 0
+        self.status: MysqlStatus = MysqlStatus.UP.value 
         self.replicas: list[MysqlInstance] = []
         self.master: MysqlInstance = None
+        
         # self.uptime = -1
         # self.server_id: int = -1 
         # self.server_uuid: int = -1 

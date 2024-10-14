@@ -1,19 +1,20 @@
-clusterSpec: 
-  mysqls:
-  - host: mysql-s1
+mysqls:
+  s1:
+    host: mysql-s1
     user: root
     password: root
-  - host: mysql-s2
+  s2:
+    host: mysql-s2
     user: root
     password: root
-  readonlyMysqls: []
-  proxysqls: 
-  - host: proxysql
-    user: radmin 
-    password: pwd
-  users: 
-    replPassword: password
-    exporterPassword: exporter
-    nonprivPassword: password
-    nonprivUser: hamadmin
-    proxysqlMonPassword: password
+proxysqls: 
+- host: proxysql
+  user: radmin 
+  password: pwd
+users: 
+  replPassword: password
+  exporterPassword: exporter
+  nonprivPassword: password
+  nonprivUser: hamadmin
+  proxysqlMonPassword: password
+

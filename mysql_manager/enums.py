@@ -30,6 +30,9 @@ class MysqlClusterState(Enum):
     CREATED = "created" 
     NEW = "new"
 
-
+class MysqlRoles(Enum):
+    SOURCE = "source"
+    REPLICA = "replica"
+    READONLY_REPLICA = "readonly_replica"
 # class ProxySQLBackendState(Enum): 
 #     REPLICA =     

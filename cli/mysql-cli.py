@@ -12,12 +12,15 @@ from mysql_manager.constants import (
     CLUSTER_STATE_FILE_PATH,
 )
 from mysql_manager.instance import MysqlInstance
+from mysql_manager.cluster_data_handler import ClusterDataHandler
 from mysql_manager.proxysql import ProxySQL
 from mysql_manager.exceptions import ProgramKilled
+from mysql_manager.enums import *
 
 current_dir = os.getcwd()
 BASE_DIR = os.path.abspath(os.path.join(current_dir, os.pardir))
 etcd_client = EtcdClient()
+cluster_data_handler = ClusterDataHandler()
 
 def read_config_file(config_file):
     config = ConfigParser()
@@ -62,16 +65,37 @@ def mysql(ctx):
 @click.option('-f', '--file', help='MySQL cluster spec file', required=False)
 @click.option('-s', '--spec', help='MySQL cluster spec', required=False)
 def init(file, spec):
+    ## TODO: handle inline spec
     with open(file, "r") as sf:
-        etcd_client.write_spec(yaml.safe_load(sf.read()))
-    
-    etcd_client.write_status(
-        {
-            "source": None,
-            "replica": None,
-            "replicaJoined": "false",
-            "sourceFailureCount": 0,
-            "state": "new", 
+        cluster_data = yaml.safe_load(sf.read())
+    ## TODO: validate data
+    names = list(cluster_data["mysqls"].keys())
+    cluster_data["mysqls"][names[0]]["role"] = MysqlRoles.SOURCE.value
+    if len(names) == 2:
+        cluster_data["mysqls"][names[1]]["role"] = MysqlRoles.REPLICA.value
+
+    cluster_data["status"] = {
+        "state": MysqlClusterState.NEW.value
+    }
+
+    cluster_data_handler.write_cluster_data_dict(cluster_data)
+
+
+@cli.command()
+@click.option('-h', '--host', help='MySQL host', required=True)
+@click.option('-u', '--user', help='Username for MySQL', default='root')
+@click.option('-p', '--password', help='Password for MySQL', required=True)
+@click.option('-n', '--name', help='Name for MySQL', required=True)
+@click.option('--port', help='Port for MySQL', type=int, default=3306)
+def add(host, user, password, name, port):
+    ## TODO: check if mysql is not duplicate
+    cluster_data_handler.add_mysql(
+        name=name,
+        mysql_data={
+            "host": host,
+            "user": user,
+            "password": password,
+            "role": MysqlRoles.REPLICA.value,
         }
     )
 
@@ -186,14 +210,12 @@ def start_cluster(nodes: int):
 
 @mysql.command()
 def get_cluster_status():
-    # config = ConfigParser() 
-    # config.read(CLUSTER_STATE_FILE_PATH)
-    state = etcd_client.read_status()
+    # state = etcd_client.read_status()
+    with open(CLUSTER_STATE_FILE_PATH, "r") as sf:
+        state = yaml.safe_load(sf)
 
-
-    print("master="+state["source"].get("state"))
-    if state["replica"] is not None: 
-        print("replica="+state["replica"].get("state"))
+    print("source="+state.get("source"))
+    print("replica="+state.get("replica"))
 
 
 @mysql.command()

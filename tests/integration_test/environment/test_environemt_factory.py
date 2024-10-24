@@ -70,31 +70,32 @@ mysql_variables=
 """
 
     def _get_mysql_manager_config(self):
-        res = {
-            "mysqls": [
-                {
-                    "host": mysql.name, 
-                    "user": mysql.root_username, 
-                    "password": mysql.root_password
-                } for mysql in self.mysqls
-            ],
-            "proxysqls":[
-                {
-                    "host": proxysql.name, 
-                    "user": proxysql.remote_username, 
-                    "password": proxysql.remote_password
-                } for proxysql in self.proxysqls
-            ],
-            "users": {
-                "replPassword": "password",
-                "exporterPassword": "exporter",
-                "nonprivPassword": "password",
-                "nonprivUser": "hamadmin",
-                "proxysqlMonPassword": "password",
-            },
-            "readonlyMysqls": []
+        config = {
+            "mysqls": {}
         }
-        return yaml.dump(res)
+        for i, mysql in enumerate(self.mysqls):
+            config["mysqls"]["s"+str(i+1)] = {
+                "host": mysql.name, 
+                "user": mysql.root_username, 
+                "password": mysql.root_password
+            }
+        
+        config["proxysqls"] = [
+            {
+                "host": proxysql.name, 
+                "user": proxysql.remote_username, 
+                "password": proxysql.remote_password
+            } for proxysql in self.proxysqls
+        ]
+        
+        config["users"] = {
+            "replPassword": "password",
+            "exporterPassword": "exporter",
+            "nonprivPassword": "password",
+            "nonprivUser": "hamadmin",
+            "proxysqlMonPassword": "password",
+        }
+        return yaml.safe_dump(config)
 
     def get_one_up_mysql(self):
         for mysql in self.mysqls:
@@ -166,6 +167,7 @@ mysql_variables=
         for proxysql in self.proxysqls:
             proxysql.destroy()
         self.mysql_manager.destroy()
+        self.etcd.destroy()
         self.network.remove()
 
     def stop_mysql(self, server_id: int):
@@ -179,9 +181,13 @@ mysql_variables=
                 mysql.setup()
                 mysql.start()
     
-    def restart_mysql_manager(self):
+    def restart_mysql_manager(self, envs):
         self.mysql_manager.destroy()
         self.setup_mysql_manager(
-            {"name": self.mysql_manager.name, "image": self.mysql_manager.image}
+            {
+                "name": self.mysql_manager.name, 
+                "image": self.mysql_manager.image, 
+                "envs": envs,
+            }
         )
         time.sleep(50) 

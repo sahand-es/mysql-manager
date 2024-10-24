@@ -79,22 +79,34 @@ def setup_user_for_etcd(context, name, password, path):
     )
 
 @given('init mysql cluster spec')
-def setup_user_for_etcd(context,):
+def init_mysql_cluster_spec(context,):
     context.test_env.mysql_manager.exec(
         f'python cli/mysql-cli.py init -f /etc/mm/cluster-spec.yaml'
     )
 
+@given('add mysql to cluster with host: {host} and name: {name} and user: {user} and password: {password}')
+def add_mysql_to_cluster(context, host, user, password, name):
+    context.test_env.mysql_manager.exec(
+        f"python cli/mysql-cli.py add -h {host} -u {user} -p {password} -n {name}"
+    )
+
 @given('stop mysql with server_id {server_id:d}')
-def start_mysql(context, server_id):
+def stop_mysql(context, server_id):
     context.test_env.stop_mysql(server_id)
 
 @given('start mysql with server_id {server_id:d}')
-def stop_mysql(context, server_id):
+def start_mysql(context, server_id):
     context.test_env.start_mysql(server_id)
 
-@given('restart mysql manager')
-def restart_mysql_manager(context):
-    context.test_env.restart_mysql_manager()
+@given('restart mysql manager with env ETCD_HOST={etcd_host:w} ETCD_USERNAME={etcd_username:w} ETCD_PASSWORD={etcd_password:w} ETCD_PREFIX={etcd_prefix}')
+def restart_mysql_manager(context, etcd_host, etcd_username, etcd_password, etcd_prefix):
+    envs = {
+        "ETCD_HOST": etcd_host,
+        "ETCD_USERNAME": etcd_username,
+        "ETCD_PASSWORD": etcd_password,
+        "ETCD_PREFIX": etcd_prefix,
+    }
+    context.test_env.restart_mysql_manager(envs)
 
 
 @when('execute mysql query with user: {user:w}, password: {password:w}, host: {host} and port: {port} query: {query}')
@@ -106,11 +118,12 @@ def exec_query(context, user, password, host, port, query):
 
 @then('result of query: "{query}" with user: {user:w} and password: {password: w} on host: {host} and port: {port} should be')
 def evaluate_query_result(context, query, user, password, host, port):
-    result = context.text
+    expected_result = context.text
     mysql = context.test_env.get_one_up_mysql()
     command = f"""mysql -u{user} -p{password} -h {host} -P {port} -X -e "{query}"
 """
     output = mysql.exec(command).output.decode()
+    logger.log(level=1, msg=output)
     output = output.split("mysql: [Warning] Using a password on the command line interface can be insecure.\n")
     output = output[1]
-    assert xmltodict.parse(output) == xmltodict.parse(result)
+    assert xmltodict.parse(output) == xmltodict.parse(expected_result)

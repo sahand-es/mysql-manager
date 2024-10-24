@@ -23,7 +23,7 @@ class MysqlManagerContainerProvider(ComponentProvider):
     def _write_config(self) -> str:
         config_path = os.path.join(
             os.getcwd(),
-            f"configs/mm/cluster-spec.yaml"
+            "configs/mm/cluster-spec.yaml"
         )
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
         with open(config_path, "w") as f:

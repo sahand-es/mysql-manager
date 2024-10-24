@@ -148,7 +148,7 @@ class MysqlInstance(BaseServer):
                     self._log(str(e))
                     raise e
     
-    def find_config_problems(self) -> list[MysqlReplicationProblem]: 
+    def find_config_problems(self) -> list[MysqlConfigProblem]: 
         db = self._get_db()
         if db is None: 
             self._log("Could not connect to mysql")

@@ -3,8 +3,13 @@ Feature: add replica to cluster
 
   Scenario: start first mysql and add second replica
     Given setup default proxysql with name: proxysql and image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
+	And setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
+    And setup user root with password: password for etcd
+    And setup user mm for etcd with password: password access to path mm/cluster1/
     And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-    And setup mysql_manager with name mm
+    And setup mysql_manager with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+	And init mysql cluster spec
+    And sleep 30 seconds
     When execute mysql query with user: hamadmin, password: password, host: proxysql and port: 3306 query: use hamdb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');
     And execute mysql query with user: root, password: root, host: mysql-s1 and port: 3306 query: flush binary logs;
     And execute mysql query with user: root, password: root, host: mysql-s1 and port: 3306 query: purge binary logs before now();
@@ -43,8 +48,8 @@ Feature: add replica to cluster
     </resultset>
     """
     Given setup default mysql with server_id 2 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-    And restart mysql manager
-
+	And add mysql to cluster with host: mysql-s2 and name: s2 and user: root and password: root
+	And sleep 50 seconds
     Then result of query: "select * from hamdb.t1;" with user: root and password: root on host: mysql-s2 and port: 3306 should be
     """
     <?xml version="1.0"?>

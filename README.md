@@ -20,6 +20,15 @@ docker compose up
 ./tests/mysql_replication_with_proxysql.sh
 ```
 
+## test with behave
+first install behave: 
+```sh 
+pip install behave testcontainers
+behave tests/features
+## if you want to build image
+BUILD_IMAGE=true behave
+```
+
 ## design and scenarios
 when the cluster manager is created it creates src and repl based on s1 and s2, respectively.
 scenarios: 

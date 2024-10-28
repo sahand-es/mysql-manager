@@ -60,7 +60,6 @@ echo -e "\n\n\U1F6B6 Checking metrics from exporter..."
 curl localhost:9104/metrics | grep mysql_up
 
 
-<<<<<<< HEAD
 echo -e "\n\n\U1F6B6 Test persisted variables..."
 docker compose restart mysql-s2
 sleep 20
@@ -71,9 +70,6 @@ echo -e "\n\n\U1F6B6 Testing add replica..."
 docker compose exec mm python /app/cli/mysql-cli.py mysql add-replica
 
 echo -e "\n\n\U1F6B6 Testing cluster status..."
-=======
-echo -e "\n\nTesting cluster status..."
->>>>>>> 32e43cd (test: Add new test for mysql manager restart and failover)
 echo -e "\n[Case 1]: up, up"
 docker exec mm python /app/cli/mysql-cli.py mysql get-cluster-status 
 

@@ -26,7 +26,9 @@ first install behave:
 pip install behave testcontainers
 behave tests/features
 ## if you want to build image
-BUILD_IMAGE=true behave
+BUILD_IMAGE=true behave tests/features
+## if you want to test specific feature
+behave tests/features/<feature-name>.feature
 ```
 
 ## design and scenarios

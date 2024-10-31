@@ -15,6 +15,7 @@ class TestEnvironmentFactory:
         self.proxysqls = []
         self.mysql_manager = None
         self.etcd = None
+        self.remote = None
         self.network = Network().create()
 
     def _get_default_mysql_config_template(self):
@@ -69,7 +70,7 @@ mysql_variables=
 }}
 """
 
-    def _get_mysql_manager_config(self):
+    def _get_mysql_manager_config(self, remote: dict=None):
         config = {
             "mysqls": {}
         }
@@ -95,6 +96,10 @@ mysql_variables=
             "nonprivUser": "hamadmin",
             "proxysqlMonPassword": "password",
         }
+
+        if remote is not None: 
+            config["remote"] = remote
+
         return yaml.safe_dump(config)
 
     def get_one_up_mysql(self):
@@ -102,17 +107,24 @@ mysql_variables=
             if mysql.is_up:
                 return mysql
 
-    def setup_mysql(self, mysql):
+    def setup_mysql(self, mysql: dict): 
+        self.setup_mysql_with_name(mysql, f"mysql-s{mysql['server_id']}")
+
+    def setup_mysql_with_name(self, mysql, name: str):
         component = MysqlContainerProvider(
             server_id=mysql["server_id"],
-            name=f"mysql-s{mysql['server_id']}",
+            name=name,
             network=self.network,
             image=mysql["image"],
             config=self._get_default_mysql_config_template().format(mysql["server_id"])
         )
-        self.mysqls.append(
-            component 
-        )
+        if name == "remote":
+            self.remote = component
+        else:
+            self.mysqls.append(
+                component 
+            ) 
+        
         component.setup()
         component.start()
         time.sleep(10)
@@ -140,12 +152,12 @@ mysql_variables=
         component.start()
         time.sleep(10)
 
-    def setup_mysql_manager(self, mysql_manager):
+    def setup_mysql_manager(self, mysql_manager, remote: dict=None):
         self.mysql_manager = MysqlManagerContainerProvider(
             name=mysql_manager["name"],
             network=self.network,
             image=mysql_manager["image"],
-            config=self._get_mysql_manager_config()
+            config=self._get_mysql_manager_config(remote)
         )
         self.mysql_manager.set_env(mysql_manager["envs"])
         self.mysql_manager.setup()
@@ -168,6 +180,8 @@ mysql_variables=
             proxysql.destroy()
         self.mysql_manager.destroy()
         self.etcd.destroy()
+        if self.remote is not None:
+            self.remote.destroy()
         self.network.remove()
 
     def stop_mysql(self, server_id: int):

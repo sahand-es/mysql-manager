@@ -1,4 +1,4 @@
-from mysql_manager.instance import MysqlInstance
+from mysql_manager.instance import Mysql
 from mysql_manager.base import BaseServer
 from mysql_manager.exceptions import MysqlConnectionException
 
@@ -20,9 +20,9 @@ class ProxySQL(BaseServer):
         self.mysql_password = mysql_password
         self.monitor_user = monitor_user
         self.monitor_password = monitor_password
-        self.backends: dict[str: MysqlInstance] = []
+        self.backends: dict[str: Mysql] = []
 
-    def add_backend(self, instance: MysqlInstance, read_weight: int=1, is_writer: bool=False):
+    def add_backend(self, instance: Mysql, read_weight: int=1, is_writer: bool=False):
         db = self._get_db()
         if db is None: 
             self._log("Could not connect to proxysql")
@@ -41,7 +41,7 @@ class ProxySQL(BaseServer):
                     self._log(str(e))
                     raise e
 
-    def remove_backend(self, instance: MysqlInstance):
+    def remove_backend(self, instance: Mysql):
         db = self._get_db()
         if db is None: 
             self._log("Could not connect to proxysql")

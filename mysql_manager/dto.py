@@ -8,6 +8,7 @@ class MysqlData:
     host: str 
     user: str 
     password: str
+    port: int = 3306
 
 
 @dataclass
@@ -15,10 +16,11 @@ class ClusterStatus:
     state: MysqlClusterState
 
 
-## TODO: define exact values for dicts
+## TODO: define exact dtos for dicts
 @dataclass
 class ClusterData:
     mysqls: dict[str: MysqlData]
+    remote: MysqlData | None 
     status: ClusterStatus
     proxysqls: list[dict[str: str]]
     users: dict[str: str]

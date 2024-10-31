@@ -6,7 +6,6 @@ from mysql_manager.dto import (
 )
 from mysql_manager.enums import MysqlRoles
 from mysql_manager.etcd import EtcdClient
-from mysql_manager.instance import MysqlInstance
 from dataclasses import asdict
 
 
@@ -43,6 +42,10 @@ class ClusterDataHandler:
         cluster_data = self.get_cluster_data()
         return cluster_data.users
     
+    def get_remote(self) -> MysqlData:
+        cluster_data = self.get_cluster_data()
+        return cluster_data.remote
+
     def get_proxysql(self) -> dict:
         cluster_data = self.get_cluster_data()
         return cluster_data.proxysqls[0]
@@ -51,9 +54,9 @@ class ClusterDataHandler:
         cluster_data = self.get_cluster_data()
         return cluster_data.status.state
     
-    def set_mysql_role(self, mysql: MysqlInstance, role: MysqlRoles): 
+    def set_mysql_role(self, name: str, role: MysqlRoles): 
         cluster_data = self.get_cluster_data()
-        cluster_data.mysqls[mysql.name].role = role
+        cluster_data.mysqls[name].role = role
         self.write_cluster_data(cluster_data)
 
     def update_cluster_state(self, state: MysqlClusterState) -> None:
@@ -68,11 +71,15 @@ class ClusterDataHandler:
         for name, mysql in cluster_data_dict["mysqls"].items(): 
             mysqls[name] = MysqlData(**mysql)
 
+        remote_dict = cluster_data_dict.get("remote")
+        remote = MysqlData(**remote_dict) if remote_dict is not None else None
+
         cluster_data = ClusterData(
             mysqls=mysqls,
             proxysqls=cluster_data_dict["proxysqls"],
             users=cluster_data_dict["users"],
             status=ClusterStatus(state=cluster_data_dict["status"]["state"]),
+            remote=remote,
         )
 
         return cluster_data

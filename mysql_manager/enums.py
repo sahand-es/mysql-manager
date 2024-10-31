@@ -29,10 +29,9 @@ class MysqlConfigProblem(Enum):
 class MysqlClusterState(Enum):
     CREATED = "created" 
     NEW = "new"
+    STANDBY = "standby"
 
 class MysqlRoles(Enum):
     SOURCE = "source"
     REPLICA = "replica"
-    READONLY_REPLICA = "readonly_replica"
-# class ProxySQLBackendState(Enum): 
-#     REPLICA =     
+    READONLY_REPLICA = "readonly_replica" 

@@ -1,4 +1,4 @@
-from mysql_manager.instance import MysqlInstance
+from mysql_manager.instance import Mysql
 from mysql_manager.proxysql import ProxySQL
 import os, time 
 
@@ -12,11 +12,11 @@ PROXYSQL_HOST = os.getenv("PROXYSQL_HOST")
 PROXYSQL_PASSWORD = os.getenv("PROXYSQL_PASSWORD")
 PROXYSQL_MON_PASSWORD = os.getenv("PROXYSQL_MON_PASSWORD")
 
-src = MysqlInstance(MYSQL_S1_HOST, "root", MYSQL_ROOT_PASSWORD)
-repl = MysqlInstance(MYSQL_S2_HOST, "root", MYSQL_ROOT_PASSWORD)
+src = Mysql(MYSQL_S1_HOST, "root", MYSQL_ROOT_PASSWORD)
+repl = Mysql(MYSQL_S2_HOST, "root", MYSQL_ROOT_PASSWORD)
 src.create_new_user("replica", MYSQL_REPL_PASSWORD, ["REPLICATION SLAVE"])
 src.add_replica(repl)
-repl.set_master(src)
+repl.set_source(src)
 repl.start_replication("replica", MYSQL_REPL_PASSWORD)
 
 ## create monitoring user 

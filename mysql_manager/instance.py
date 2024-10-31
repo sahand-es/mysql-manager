@@ -11,7 +11,7 @@ from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationE
 from mysql_manager.base import BaseServer
 from mysql_manager.constants import DEFAULT_DATABASE
 
-class MysqlInstance(BaseServer):
+class Mysql(BaseServer):
     def __init__(self, host: str, user: str, password: str, name: str, role: str, port: int=3306) -> None: 
         self.host = host 
         self.port = port
@@ -21,8 +21,8 @@ class MysqlInstance(BaseServer):
         self.role = role
         self.health_check_failures: int = 0
         self.status: MysqlStatus = MysqlStatus.UP.value 
-        self.replicas: list[MysqlInstance] = []
-        self.master: MysqlInstance = None
+        self.replicas: list[Mysql] = []
+        self.source: Mysql = None
         
         # self.uptime = -1
         # self.server_id: int = -1 
@@ -104,25 +104,20 @@ class MysqlInstance(BaseServer):
             self._log("Could not connect to mysql")
             raise MysqlConnectionException()
 
+        command = (
+            "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS," 
+            "REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES," 
+            "LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW," 
+            f"SHOW VIEW, CREATE ROUTINE, EVENT, TRIGGER ON *.* TO `{user}`@`%`"
+        )
         with db: 
             with db.cursor() as cursor:
                 try: 
                     cursor.execute(
                         f"CREATE USER IF NOT EXISTS '{user}'@'%' IDENTIFIED WITH mysql_native_password BY '{password}'"
                     )
-                    cursor.execute(
-                        f"GRANT CREATE, DROP, PROCESS, SHOW DATABASES, REPLICATION CLIENT, CREATE USER, CREATE ROLE, DROP ROLE ON *.* TO '{user}'@'%' WITH GRANT OPTION"
-                    )
-                    cursor.execute(
-                        f"GRANT ROLE_ADMIN ON *.* TO '{user}'@'%' WITH GRANT OPTION"
-                    )
-                    cursor.execute(
-                        f"GRANT ALL PRIVILEGES ON {DEFAULT_DATABASE}.* TO '{user}'@'%' WITH GRANT OPTION"
-                    )
-                    for db in ["mysql", "sys", "performance_schema"]:
-                        cursor.execute(
-                            f"GRANT SELECT ON {db}.* TO '{user}'@'%' WITH GRANT OPTION"
-                        )
+                    cursor.execute(command)
+                    cursor.execute("FLUSH PRIVILEGES")
                 except Exception as e: 
                     self._log(str(e))
                     raise e
@@ -276,21 +271,29 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
         
         return problems
 
-    def set_master(self, master):
-        if master.is_replica():
-            self._log("This server at "+master.host+" is a replica and can not be set as master")
+    def set_source(self, source):
+        if source.is_replica():
+            self._log("This server at "+source.host+" is a replica and can not be set as source")
             return
         
-        master_cfg_problems = master.find_config_problems()
-        if len(master_cfg_problems) != 0:
-            self._log("Problem in master at "+master.host+" config: " + str(master_cfg_problems))
+        source_cfg_problems = source.find_config_problems()
+        if len(source_cfg_problems) != 0:
+            self._log("Problem in source at "+source.host+" config: " + str(source_cfg_problems))
             return
         
-        self.master = master 
+        self.source = source 
+    
+    def set_remote_source(self, remote_source): 
+        source_cfg_problems = remote_source.find_config_problems()
+        if len(source_cfg_problems) != 0:
+            self._log("Problem in source at "+remote_source.host+" config: " + str(source_cfg_problems))
+            return
+        
+        self.source = remote_source 
 
     def _generate_change_master_command(self, repl_user: str, repl_password: str) -> str:
         return f"""
-CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}', 
+CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.source.host}', 
     SOURCE_USER='{repl_user}',
     SOURCE_PASSWORD='{repl_password}',
     SOURCE_CONNECT_RETRY = 1,
@@ -313,16 +316,16 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.master.host}',
                     self._log(str(e)) 
                     raise e
 
-        self.master = None 
+        self.source = None 
 
     ## TODO: read orchestrator code 
     ## TODO: check server ids not equal
     def start_replication(self, repl_user: str, repl_password: str): 
-        if self.master is None: 
+        if self.source is None: 
             self._log("No master set for this instance")
             raise MysqlReplicationException()
         
-        if not self.master.ping():
+        if not self.source.ping():
             self._log("Master not accesible")
             raise MysqlReplicationException()
         

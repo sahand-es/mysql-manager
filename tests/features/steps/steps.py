@@ -23,8 +23,15 @@ def start_default_proxysql(context, name, image):
         }
     )
 
+@given('setup default mysql with server_id {server_id:d} and name {name} and image: {image}')
+def start_mysql_with_name(context, server_id, name, image):
+    context.test_env.setup_mysql_with_name(
+        {"server_id": server_id, "image": image},
+        name=name,
+    )
+
 @given('setup default mysql with server_id {server_id:d} and image: {image}')
-def start_proxysql(context, server_id, image):
+def start_mysql(context, server_id, image):
     context.test_env.setup_mysql(
         {"server_id": server_id, "image": image}
     )
@@ -39,6 +46,23 @@ def start_mysql_manager(context, name, etcd_host, etcd_username, etcd_password, 
     }
     context.test_env.setup_mysql_manager(
         {"name": name, "image": context.mysql_manager_image, "envs": envs}
+    )
+
+@given('setup mysql_manager with remote with name {name:w} with env ETCD_HOST={etcd_host:w} ETCD_USERNAME={etcd_username:w} ETCD_PASSWORD={etcd_password:w} ETCD_PREFIX={etcd_prefix}')
+def start_mysql_manager_with_remote(context, name, etcd_host, etcd_username, etcd_password, etcd_prefix):
+    envs = {
+        "ETCD_HOST": etcd_host,
+        "ETCD_USERNAME": etcd_username,
+        "ETCD_PASSWORD": etcd_password,
+        "ETCD_PREFIX": etcd_prefix
+    }
+    context.test_env.setup_mysql_manager(
+        {"name": name, "image": context.mysql_manager_image, "envs": envs},
+        remote={
+            "host": "remote",
+            "user": "root",
+            "password": "root",
+        }
     )
 
 @given('setup etcd with name {name:w} and image: {image}')
@@ -84,6 +108,18 @@ def init_mysql_cluster_spec(context,):
         f'python cli/mysql-cli.py init -f /etc/mm/cluster-spec.yaml'
     )
 
+@given('init mysql cluster spec standby of remote mysql')
+def init_mysql_cluster_spec_with_remote(context,):
+    context.test_env.mysql_manager.exec(
+        f'python cli/mysql-cli.py init -f /etc/mm/cluster-spec.yaml --standby'
+    )
+
+@given('promote mysql cluster')
+def promote_mysql_cluster(context,):
+    context.test_env.mysql_manager.exec(
+        f'python cli/mysql-cli.py promote'
+    )
+
 @given('add mysql to cluster with host: {host} and name: {name} and user: {user} and password: {password}')
 def add_mysql_to_cluster(context, host, user, password, name):
     context.test_env.mysql_manager.exec(
@@ -108,8 +144,7 @@ def restart_mysql_manager(context, etcd_host, etcd_username, etcd_password, etcd
     }
     context.test_env.restart_mysql_manager(envs)
 
-
-@when('execute mysql query with user: {user:w}, password: {password:w}, host: {host} and port: {port} query: {query}')
+@step('execute mysql query with user: {user:w}, password: {password:w}, host: {host} and port: {port} query: {query}')
 def exec_query(context, user, password, host, port, query):
     mysql = context.test_env.get_one_up_mysql()
     command = f"""mysql -u{user} -p{password} -h {host} -P {port} -e "{query}"

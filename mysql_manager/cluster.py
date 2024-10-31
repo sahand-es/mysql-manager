@@ -3,7 +3,7 @@ from pymysql.err import OperationalError
 from dataclasses import asdict
 from prometheus_client import start_http_server
 
-from mysql_manager.instance import MysqlInstance
+from mysql_manager.instance import Mysql
 from mysql_manager.etcd import EtcdClient
 from mysql_manager.dto import ClusterData
 from mysql_manager.base import BaseServer
@@ -31,10 +31,11 @@ from mysql_manager.metrics import (
 
 class ClusterManager: 
     def __init__(self, config_file: str=DEFAULT_CONFIG_PATH):
-        self.src: MysqlInstance = None
-        self.repl: MysqlInstance = None
+        self.src: Mysql = None
+        self.repl: Mysql = None
         self.proxysqls: list[ProxySQL] = [] 
         self.users: dict = {} 
+        self.remote: Mysql = None
         self.config_file = config_file
         self.cluster_data_handler = ClusterDataHandler()
         self.etcd_client = EtcdClient()
@@ -50,16 +51,18 @@ class ClusterManager:
             raise MysqlClusterConfigError()
         
     def _load_cluster_data(self):
-        # spec = self.etcd_client.read_spec()
-        # self._validate_cluster_spec(spec)
-        
+        ## TODO: handle mysql servers with ports other than 3306
         self.users = self.cluster_data_handler.get_users()
         for name, mysql in self.cluster_data_handler.get_mysqls().items():
             if mysql.role == MysqlRoles.SOURCE.value:
                 if self.src is None or self.src.name != name: 
-                    self.src = MysqlInstance(name=name, **asdict(mysql))
+                    self.src = Mysql(name=name, **asdict(mysql))
             elif mysql.role ==  MysqlRoles.REPLICA.value:
-                self.repl = MysqlInstance(name=name, **asdict(mysql))
+                self.repl = Mysql(name=name, **asdict(mysql))
+
+        remote_dto = self.cluster_data_handler.get_remote()
+        if remote_dto is not None: 
+            self.remote = Mysql(name=REMOTE_SOURCE_NAME, **asdict(remote_dto))
 
         self.proxysqls.append(
             ProxySQL(
@@ -71,19 +74,23 @@ class ClusterManager:
             ),
         )
         
-    # def is_cluster_data_available(self) -> bool:
-    #     clusterData = self.etcd_client.read_spec()
-    #     if clusterData is None:
-    #         return False
-    
-    #     return True
-    
     def run(self):
         while not self.cluster_data_handler.is_cluster_data_available(): 
             time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
             self._log("Cluster data not available. Waiting for it...")
 
         self._load_cluster_data()
+
+        ## here we assume the remote server is always up because we don't have control over it
+        while self.cluster_data_handler.get_cluster_state() == MysqlClusterState.STANDBY.value:
+            self._log(f"Cluster is in standby mode. Remote server: {self.remote.host}")
+            if self.must_replica_join_source(self.src, self.remote):
+                self.join_source_to_remote(retry=1)
+            time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
+
+        if self.remote is not None: 
+            self.src.reset_replication()
+
         self.start()
         while True: 
             self._log("Checking cluster state...")
@@ -91,18 +98,19 @@ class ClusterManager:
             self._load_cluster_data()
             self.reconcile_cluster()
 
-    def must_replica_join_source(self, repl: MysqlInstance) -> bool:
+    def must_replica_join_source(self, repl: Mysql, src: Mysql) -> bool:
         # in the first two checks, if replica is not available we return True to 
         # prevent useless start replication attempts
         if self.repl is None:
-            return True
+            return False
         if not self.is_server_up(self.repl):
-            return True
-        ## TODO: actually check if replica is replicating from source
-        if self.repl.is_replica():
-            return True
+            return False
 
-        return False
+        repl_status = repl.get_replica_status()
+        if repl_status is not None and repl_status.get("Source_Host") ==  src.host:
+            return False
+
+        return True
     
     def reconcile_cluster(self):
         self._log("Running reconciliation for cluster")
@@ -112,8 +120,8 @@ class ClusterManager:
         self._set_status_metrics()
 
         if self.repl is not None:  
-            if not self.must_replica_join_source(self.repl): 
-                self.add_replica_to_source(retry=1)
+            if self.must_replica_join_source(self.repl, self.src): 
+                self.join_replica_to_source(retry=1)
             if (
                 self.repl.status == MysqlStatus.REPLICATION_THREADS_STOPPED.value
                 and self.src.status == MysqlStatus.UP.value
@@ -136,9 +144,10 @@ class ClusterManager:
                 FAILOVER_ATTEMPTS.inc()
                 ## TODO: what if we restart when running this 
                 ## TODO: use etcd txn
-                self.cluster_data_handler.set_mysql_role(self.src, MysqlRoles.REPLICA.value)
-                self.cluster_data_handler.set_mysql_role(self.repl, MysqlRoles.SOURCE.value)
+                self.cluster_data_handler.set_mysql_role(self.src.name, MysqlRoles.REPLICA.value)
+                self.cluster_data_handler.set_mysql_role(self.repl.name, MysqlRoles.SOURCE.value)
                 self.proxysqls[0].remove_backend(self.src)
+                ## TODO: let all relay logs to be applied before resetting replication
                 self.repl.reset_replication()
                 self.switch_src_and_repl()
 
@@ -160,21 +169,21 @@ class ClusterManager:
 
     def switch_src_and_repl(self): 
         self._log(f"Switching src[{self.src.host}] and repl[{self.repl.host}]")
-        tmp_src = MysqlInstance(
+        tmp_src = Mysql(
             self.src.host, 
             self.src.user, 
             self.src.password,
             self.src.name,
             self.src.role,
         )
-        self.src = MysqlInstance(
+        self.src = Mysql(
             self.repl.host, 
             self.repl.user, 
             self.repl.password,
             self.repl.name,
             MysqlRoles.SOURCE.value,
         )
-        self.repl = MysqlInstance(
+        self.repl = Mysql(
             tmp_src.host, 
             tmp_src.user, 
             tmp_src.password,
@@ -217,11 +226,18 @@ class ClusterManager:
                 }
             ))
 
+    def start_mysql_replication_from_remote(self):
+        ## TODO: reset replication all for both of them 
+        self._log(f"Starting replication in {self.src.host} from remote {self.remote.host}")
+        self.src.set_remote_source(self.remote)
+        ## DOC: remote.user and remote.password must have replication and clone access in remote
+        self.src.start_replication(self.remote.user, self.remote.password)
+
     def start_mysql_replication(self):
         ## TODO: reset replication all for both of them 
         self._log(f"Starting replication in {self.repl.host}")
         self.src.add_replica(self.repl)
-        self.repl.set_master(self.src)
+        self.repl.set_source(self.src)
         self.repl.start_replication("replica", self.users["replPassword"])
     
     def is_server_up(self, server: BaseServer, retry: int=1) -> bool:
@@ -265,7 +281,38 @@ class ClusterManager:
         
         self.proxysqls[0].add_backend(self.src, 1, True)
 
-    def add_replica_to_source(self, retry: int=1):
+    ## TODO: merge these two join methods
+    def join_source_to_remote(self, retry: int=1):
+        ## TODO: check remote plugin installed 
+        ## TODO: check remote clone conditions
+        ## TODO: check remote server id
+        self._log("Joining source to remote")    
+        self.src.install_plugin("clone", "mysql_clone.so")
+
+        self.src.run_command(
+            f"set persist clone_valid_donor_list='{self.remote.host}:{self.remote.port}'"
+        )
+        self.src.run_command("set persist read_only=0")
+        clone_successful = False
+        ## we do not proceed until clone is successful
+        while not clone_successful:
+            try:
+                self._log("Cloning remote server")
+                self.src.run_command(
+                    f"CLONE INSTANCE FROM '{self.remote.user}'@'{self.remote.host}':{self.remote.port} IDENTIFIED BY '{self.remote.password}'"
+                )
+            except OperationalError as o:
+                self._log(str(o))
+                if "Restart server failed (mysqld is not managed by supervisor process)" in str(o):
+                    clone_successful = True 
+                    break
+                self._log("Failed to clone remote. Trying again...")
+                time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
+
+        self.check_servers_up(retry=retry)
+        self.start_mysql_replication_from_remote()
+
+    def join_replica_to_source(self, retry: int=1):
         self._log("Joining replica to source")    
         self.src.install_plugin("clone", "mysql_clone.so")
         self.repl.install_plugin("clone", "mysql_clone.so")

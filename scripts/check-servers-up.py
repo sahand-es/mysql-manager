@@ -1,4 +1,4 @@
-from mysql_manager.instance import MysqlInstance
+from mysql_manager.instance import Mysql
 from mysql_manager.proxysql import ProxySQL
 import os, time, json 
 
@@ -11,8 +11,8 @@ PROXYSQL_HOST = os.getenv("PROXYSQL_HOST")
 PROXYSQL_PASSWORD = os.getenv("PROXYSQL_PASSWORD")
 PROXYSQL_MON_PASSWORD = os.getenv("PROXYSQL_MON_PASSWORD")
 
-src = MysqlInstance(MYSQL_S1_HOST, "root", MYSQL_ROOT_PASSWORD)
-repl = MysqlInstance(MYSQL_S2_HOST, "root", MYSQL_ROOT_PASSWORD)
+src = Mysql(MYSQL_S1_HOST, "root", MYSQL_ROOT_PASSWORD)
+repl = Mysql(MYSQL_S2_HOST, "root", MYSQL_ROOT_PASSWORD)
 px = ProxySQL(
     PROXYSQL_HOST, 
     "radmin", 

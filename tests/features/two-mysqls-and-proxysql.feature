@@ -102,27 +102,7 @@ Feature: two-mysqls-and-one-proxysql
 
     <resultset statement="show grants for hamadmin" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       <row>
-	    <field name="Grants for hamadmin@%">GRANT CREATE, DROP, PROCESS, SHOW DATABASES, REPLICATION CLIENT, CREATE USER, CREATE ROLE, DROP ROLE ON *.* TO `hamadmin`@`%` WITH GRANT OPTION</field>
-      </row>
-
-      <row>
-	    <field name="Grants for hamadmin@%">GRANT ROLE_ADMIN ON *.* TO `hamadmin`@`%` WITH GRANT OPTION</field>
-      </row>
-
-      <row>
-	    <field name="Grants for hamadmin@%">GRANT ALL PRIVILEGES ON `hamdb`.* TO `hamadmin`@`%` WITH GRANT OPTION</field>
-      </row>
-
-      <row>
-	    <field name="Grants for hamadmin@%">GRANT SELECT ON `mysql`.* TO `hamadmin`@`%` WITH GRANT OPTION</field>
-      </row>
-
-      <row>
-	    <field name="Grants for hamadmin@%">GRANT SELECT ON `sys`.* TO `hamadmin`@`%` WITH GRANT OPTION</field>
-      </row>
-
-      <row>
-	    <field name="Grants for hamadmin@%">GRANT SELECT ON `performance_schema`.* TO `hamadmin`@`%` WITH GRANT OPTION</field>
+	    <field name="Grants for hamadmin@%">GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS, REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, EVENT, TRIGGER ON *.* TO `hamadmin`@`%`</field>
       </row>
     </resultset>
     """

@@ -1,4 +1,4 @@
-from mysql_manager.instance import MysqlInstance
+from mysql_manager.instance import Mysql
 from mysql_manager.proxysql import ProxySQL
 from mysql_manager.cluster import ClusterManager
 
@@ -10,7 +10,7 @@ def test_normal_info_wrong():
     ]
     for i in tests: 
         print(i)
-        inst = MysqlInstance(**i)
+        inst = Mysql(**i)
         print("pinged: " + str(inst.ping()))
         inst.get_master_status()
         print("config problem: " + str(inst.find_config_problems()))
@@ -22,7 +22,7 @@ def test_timeout():
     ]
     for i in tests: 
         print(i)
-        inst = MysqlInstance(**i)
+        inst = Mysql(**i)
         print("pinged: " + str(inst.ping()))
         print("\n\n")
 
@@ -31,12 +31,12 @@ def test_replication():
         {"host": "test-mysql-s1-svc", "user": "root", "password": "root"},
         {"host": "test-mysql-s2-svc", "user": "root", "password": "root"},
     ]
-    src = MysqlInstance(**tests[0])
-    repl = MysqlInstance(**tests[1])
+    src = Mysql(**tests[0])
+    repl = Mysql(**tests[1])
     src.create_new_user("replica", "replica", ["REPLICATION SLAVE"])
     print("user replica exists: ", str(src.user_exists("replica", [])))
     src.add_replica(repl)
-    repl.set_master(src)
+    repl.set_source(src)
     repl.start_replication("replica", "replica")
     print("is src replica: " + str(src.is_replica()))
     print("is repl replica: " + str(repl.is_replica()))

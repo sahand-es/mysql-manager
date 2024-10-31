@@ -4,6 +4,7 @@ from configparser import ConfigParser
 
 import click
 import yaml
+import logging
 
 from mysql_manager.etcd import EtcdClient
 from mysql_manager.cluster import ClusterManager
@@ -11,7 +12,7 @@ from mysql_manager.constants import (
     DEFAULT_CONFIG_PATH,
     CLUSTER_STATE_FILE_PATH,
 )
-from mysql_manager.instance import MysqlInstance
+from mysql_manager.instance import Mysql
 from mysql_manager.cluster_data_handler import ClusterDataHandler
 from mysql_manager.proxysql import ProxySQL
 from mysql_manager.exceptions import ProgramKilled
@@ -21,6 +22,7 @@ current_dir = os.getcwd()
 BASE_DIR = os.path.abspath(os.path.join(current_dir, os.pardir))
 etcd_client = EtcdClient()
 cluster_data_handler = ClusterDataHandler()
+logger = logging.getLogger(__name__)
 
 def read_config_file(config_file):
     config = ConfigParser()
@@ -61,11 +63,24 @@ def cli(ctx):
 def mysql(ctx):
     pass
 
+
+
+@cli.command()
+def promote():
+    if cluster_data_handler.get_cluster_state() != MysqlClusterState.STANDBY.value:
+        logger.error("You can not promote a cluster that is not standby")
+        return
+    
+    cluster_data_handler.update_cluster_state(MysqlClusterState.NEW.value)
+        
+
 @cli.command()
 @click.option('-f', '--file', help='MySQL cluster spec file', required=False)
 @click.option('-s', '--spec', help='MySQL cluster spec', required=False)
-def init(file, spec):
+@click.option('--standby', is_flag=True, help='Set this flag if you want to replicate from remote server')
+def init(file, spec, standby: bool):
     ## TODO: handle inline spec
+    ## TODO: validate if remote exists in config
     with open(file, "r") as sf:
         cluster_data = yaml.safe_load(sf.read())
     ## TODO: validate data
@@ -74,9 +89,15 @@ def init(file, spec):
     if len(names) == 2:
         cluster_data["mysqls"][names[1]]["role"] = MysqlRoles.REPLICA.value
 
-    cluster_data["status"] = {
-        "state": MysqlClusterState.NEW.value
-    }
+    if standby:
+        cluster_data["remote"]["role"] = MysqlRoles.SOURCE.value
+        cluster_data["status"] = {
+            "state": MysqlClusterState.STANDBY.value  
+        }
+    else:
+        cluster_data["status"] = {
+            "state": MysqlClusterState.NEW.value  
+        }
 
     cluster_data_handler.write_cluster_data_dict(cluster_data)
 
@@ -134,7 +155,7 @@ def create_user(ctx, name, user, password, roles):
     config = ctx.obj['CONFIG']
 
     print(f"Creating user '{user}' with roles {roles.split(',')} on mysql '{name}'")
-    ins = MysqlInstance(**get_instance_from_config(config, name))
+    ins = Mysql(**get_instance_from_config(config, name))
     ins.create_new_user(user, password, roles.split(','))
 
 
@@ -184,29 +205,7 @@ def run():
     print("Starting cluster manager...")
     clm = ClusterManager()
     clm.run()
-    # stop_event = threading.Event()
-    # tr = threading.Thread(target=clm.run, args=[stop_event])
-    # tr.start()
 
-    # while True:
-    #     try:
-    #         time.sleep(5)
-    #         if not tr.is_alive():
-    #             break 
-    #     except ProgramKilled:
-    #         print("Program killed: running cleanup code")
-    #         stop_event.set()
-    #         break
-
-@mysql.command()
-# @click.option('--config-file', help='Config file of Cluster Manager', required=False, default="/etc/mm/config.ini")
-@click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
-def start_cluster(nodes: int):
-    # create_config_file_from_env(nodes_count=nodes)
-    # print("Starting cluster...")
-    # clm = ClusterManager()
-    # clm.start()
-    pass 
 
 @mysql.command()
 def get_cluster_status():
@@ -216,54 +215,6 @@ def get_cluster_status():
 
     print("source="+state.get("source"))
     print("replica="+state.get("replica"))
-
-
-@mysql.command()
-# @click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
-def add_replica():
-    pass 
-    # create_config_file_from_env(nodes_count=2)
-    # clm = ClusterManager()
-    # clm.add_replica_to_master()
-
-# @mysql.command()
-# @click.option('--master', help='Master MySQL host for replication')
-# @click.option('--replica', help='Replica MySQL host for replication')
-# @click.pass_context
-# def add_replica(ctx, master, replica):
-#     config = ctx.obj['CONFIG']
-#     print(f"Adding replica from master '{master}' to replica '{replica}'")
-#     src = MysqlInstance(master, *get_instance_from_config(config, master))
-#     repl = MysqlInstance(replica, *get_instance_from_config(config, master))
-#     src.add_replica(repl)
-
-
-# @mysql.command()
-# @click.option('--master', help='Master MySQL name')
-# @click.option('--replica', help='MySQL name to start replication')
-# @click.option('--repl-user', help='Replication user')
-# @click.option('--repl-password', help='Replication user password')
-# @click.pass_context
-# def start_replication(ctx, master, replica, repl_user, repl_password):
-#     config = ctx.obj['CONFIG']
-
-#     print(f"Starting replication on mysql '{replica}' with repl_user '{repl_user}' on master '{master}'")
-#     master_instance = MysqlInstance(**get_instance_from_config(config, master))
-#     repl = MysqlInstance(**get_instance_from_config(config, replica))
-#     repl.set_master(master_instance)
-#     repl.start_replication(repl_user, repl_password)
-
-
-@mysql.command()
-@click.option('-n', '--name', help='MySQL name')
-@click.option('--password', help='Monitoring user password')
-@click.pass_context
-def create_monitoring_user(ctx, name, password):
-    config = ctx.obj['CONFIG']
-
-    print(f"Creating monitoring user for mysql '{name}'")
-    src = MysqlInstance(**get_instance_from_config(config, name))
-    src.create_monitoring_user(password)
 
 
 @cli.group()
@@ -332,7 +283,7 @@ def add_backend(ctx, mysql_name, proxysql_name, read_weight, is_writer):
     print(f"Adding {role} backend to ProxySQL on {proxysql_name}'")
 
     mysql_ins = get_instance_from_config(config, mysql_name)
-    mysql_instance = MysqlInstance(**mysql_ins)
+    mysql_instance = Mysql(**mysql_ins)
     proxysql_ins = get_instance_from_config(config, proxysql_name)
     proxysql_ins.pop('port')
     px = ProxySQL(
@@ -343,63 +294,6 @@ def add_backend(ctx, mysql_name, proxysql_name, read_weight, is_writer):
         monitor_password='',
     )
     px.add_backend(mysql_instance, read_weight, is_writer)
-
-
-@proxysql.command()
-@click.option('-n', '--name', help='Proxysql name')
-@click.option('--on', is_flag=True, help='Specify if read write should be split')
-@click.option('--off', is_flag=True, help='Specify if read write should NOT be split')
-@click.pass_context
-def split_rw(ctx, name, on, off):
-    if on == off:
-        raise Exception("Cannot have both on and off options at the same time")
-    config = ctx.obj['CONFIG']
-    proxysql_ins = get_instance_from_config(config, name)
-    proxysql_ins.pop('port')
-    px = ProxySQL(
-        **proxysql_ins,
-        mysql_user='',
-        mysql_password='',
-        monitor_user='',
-        monitor_password='',
-    )
-    res = px.split_read_write(True if on else False)
-
-
-@mysql.command()
-@click.option('-n', '--name', help='MySQL name')
-@click.pass_context
-def ping(ctx, name):
-    config = ctx.obj['CONFIG']
-
-    ins = MysqlInstance(**get_instance_from_config(config, name))
-    res = ins.ping()
-    print(f"Ping Result: {res}")
-
-
-# @mysql.command()
-# @click.option('-n', '--name', help='MySQL name')
-# @click.option('-c', '--command', help='Command to be executed for MySQL')
-# @click.pass_context
-# def get_info(ctx, name, command):
-#     config = ctx.obj['CONFIG']
-
-#     ins = MysqlInstance(host, *get_instance_from_config(config, host))
-#     res = ins.run_command(command)
-#     print(f"Get-Info Result: {res}")
-
-
-@mysql.command()
-@click.option('-n', '--name', help='MySQL name')
-@click.option('-i', '--intervals', help='Intervals of flushing PITR binlogs in minutes')
-@click.pass_context
-def add_pitr_event(ctx, name, intervals):
-    config = ctx.obj['CONFIG']
-
-    ins = MysqlInstance(**get_instance_from_config(config, name))
-    res = ins.add_pitr_event(intervals)
-    print(f"Add PITR Event Result: {res}")
-
 
 if __name__ == '__main__':
     cli()

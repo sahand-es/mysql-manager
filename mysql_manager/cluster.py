@@ -98,12 +98,12 @@ class ClusterManager:
             self._load_cluster_data()
             self.reconcile_cluster()
 
-    def must_replica_join_source(self, repl: Mysql, src: Mysql) -> bool:
+    def must_replica_join_source(self, repl: Mysql|None, src: Mysql) -> bool:
         # in the first two checks, if replica is not available we return True to 
         # prevent useless start replication attempts
-        if self.repl is None:
+        if repl is None:
             return False
-        if not self.is_server_up(self.repl):
+        if not self.is_server_up(repl):
             return False
 
         repl_status = repl.get_replica_status()

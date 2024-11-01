@@ -8,6 +8,7 @@ docker push registry.hamdocker.ir/public/mysql-manager:$VERSION
 
 ## generate requirements.txt 
 ```sh
+pip install poetry
 poetry export --without-hashes --format=requirements.txt > requirements.txt
 ```
 

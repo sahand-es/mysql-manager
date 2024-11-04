@@ -30,6 +30,8 @@ behave tests/features
 BUILD_IMAGE=true behave tests/features
 ## if you want to test specific feature
 behave tests/features/<feature-name>.feature
+## to test a specific scenario at line LINENO
+behave tests/features/<feature-name>.feature:LINENO
 ```
 
 ## design and scenarios

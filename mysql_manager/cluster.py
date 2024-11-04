@@ -85,7 +85,7 @@ class ClusterManager:
         while self.cluster_data_handler.get_cluster_state() == MysqlClusterState.STANDBY.value:
             self._log(f"Cluster is in standby mode. Remote server: {self.remote.host}")
             if self.must_replica_join_source(self.src, self.remote):
-                self.join_source_to_remote(retry=1)
+                self.join_source_to_remote(retry=10)
             time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
 
         if self.remote is not None: 
@@ -293,9 +293,8 @@ class ClusterManager:
             f"set persist clone_valid_donor_list='{self.remote.host}:{self.remote.port}'"
         )
         self.src.run_command("set persist read_only=0")
-        clone_successful = False
         ## we do not proceed until clone is successful
-        while not clone_successful:
+        while True:
             try:
                 self._log("Cloning remote server")
                 self.src.run_command(
@@ -304,12 +303,22 @@ class ClusterManager:
             except OperationalError as o:
                 self._log(str(o))
                 if "Restart server failed (mysqld is not managed by supervisor process)" in str(o):
-                    clone_successful = True 
                     break
                 self._log("Failed to clone remote. Trying again...")
                 time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
 
+        src_main_password = self.src.password
+        src_main_user = self.src.user
+        self.src.password = self.remote.password
+        self.src.user = self.remote.user
         self.check_servers_up(retry=retry)
+        if self.src.user_exists(src_main_user):
+            self.src.change_user_password(src_main_user, src_main_password)
+        else:
+            self.src.create_new_user(src_main_user, src_main_password, ["ALL"])
+
+        self.src.password = src_main_password
+        self.src.user = src_main_user
         self.start_mysql_replication_from_remote()
 
     def join_replica_to_source(self, retry: int=1):

@@ -40,18 +40,17 @@ class Mysql(BaseServer):
         # self.seconds_behind_master: int = 0 
         # self.executed_gtid_set: str = "" 
     
-    def user_exists(self, user: str, grants: list[str]) -> bool: 
+    def user_exists(self, user: str) -> bool: 
         db = self._get_db()
         if db is None: 
             self._log("Could not connect to mysql")
             raise MysqlConnectionException()
         
-        result = {}
         with db: 
             with db.cursor() as cursor:
                 try: 
                     cursor.execute(f"SHOW GRANTS FOR '{user}'")
-                    result = cursor.fetchone()
+                    cursor.fetchone()
                 except pymysql.err.OperationalError: 
                     return False
                 except Exception as e: 
@@ -60,6 +59,21 @@ class Mysql(BaseServer):
         
         return True
     
+    def change_user_password(self, user: str, password: str):
+        db = self._get_db()
+        if db is None: 
+            self._log("Could not connect to mysql")
+            raise MysqlConnectionException()
+        
+        with db: 
+            with db.cursor() as cursor:
+                try: 
+                    cursor.execute(f"ALTER USER '{user}'@'%' IDENTIFIED BY '{password}'")
+                    cursor.execute("FLUSH PRIVILEGES")
+                except Exception as e: 
+                    self._log(str(e))
+                    raise e
+
     def create_database(self, name: str): 
         db = self._get_db()
         if db is None: 

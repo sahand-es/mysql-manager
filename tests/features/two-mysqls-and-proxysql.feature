@@ -138,11 +138,11 @@ Feature: two-mysqls-and-one-proxysql
     </resultset>
     """
 
-    Then result of query: "select * from runtime_mysql_servers;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
+    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
     """
     <?xml version="1.0"?>
 
-    <resultset statement="select * from runtime_mysql_servers" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       <row>
 	    <field name="hostgroup_id">0</field>
 	    <field name="hostname">mysql-s1</field>

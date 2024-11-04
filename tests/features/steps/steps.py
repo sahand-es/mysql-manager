@@ -48,8 +48,8 @@ def start_mysql_manager(context, name, etcd_host, etcd_username, etcd_password, 
         {"name": name, "image": context.mysql_manager_image, "envs": envs}
     )
 
-@given('setup mysql_manager with remote with name {name:w} with env ETCD_HOST={etcd_host:w} ETCD_USERNAME={etcd_username:w} ETCD_PASSWORD={etcd_password:w} ETCD_PREFIX={etcd_prefix}')
-def start_mysql_manager_with_remote(context, name, etcd_host, etcd_username, etcd_password, etcd_prefix):
+@given('setup mysql_manager with remote({rhost}, {ruser}, {rpassword}, {rport:d}) with name {name:w} with env ETCD_HOST={etcd_host:w} ETCD_USERNAME={etcd_username:w} ETCD_PASSWORD={etcd_password:w} ETCD_PREFIX={etcd_prefix}')
+def start_mysql_manager_with_remote(context, rhost, ruser, rpassword, rport, name, etcd_host, etcd_username, etcd_password, etcd_prefix):
     envs = {
         "ETCD_HOST": etcd_host,
         "ETCD_USERNAME": etcd_username,
@@ -59,9 +59,10 @@ def start_mysql_manager_with_remote(context, name, etcd_host, etcd_username, etc
     context.test_env.setup_mysql_manager(
         {"name": name, "image": context.mysql_manager_image, "envs": envs},
         remote={
-            "host": "remote",
-            "user": "root",
-            "password": "root",
+            "host": rhost,
+            "user": ruser,
+            "password": rpassword,
+            "port": rport,
         }
     )
 

@@ -1,6 +1,8 @@
 Feature: test failover
   setup 2 nodes, kill master and check failover, after that restart previous master and it should join the cluster as a replica node
 
+## TODO: check read only values on servers
+## TODO: check host group config in proxysql
   Scenario: start first mysql and add second replica
     Given setup default proxysql with name: proxysql and image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
     And setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
@@ -122,26 +124,11 @@ Feature: test failover
     </resultset>
     """
 
-    Then result of query: "select * from runtime_mysql_servers;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
+    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
     """
     <?xml version="1.0"?>
 
-    <resultset statement="select * from runtime_mysql_servers" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s2</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
+    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       <row>
 	    <field name="hostgroup_id">1</field>
 	    <field name="hostname">mysql-s2</field>
@@ -179,26 +166,11 @@ Feature: test failover
     # Then result of query: "show master status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     # """
     # """
-    Then result of query: "select * from runtime_mysql_servers;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
+    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
     """
     <?xml version="1.0"?>
 
-    <resultset statement="select * from runtime_mysql_servers" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s2</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
+    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       <row>
 	    <field name="hostgroup_id">1</field>
 	    <field name="hostname">mysql-s1</field>
@@ -280,7 +252,7 @@ Feature: test failover
     """
 
     Given restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
-
+    And sleep 20 seconds
     Then result of query: "show replica status;" with user: root and password: root on host: mysql-s2 and port: 3306 should be
     """
     <?xml version="1.0"?>
@@ -298,26 +270,11 @@ Feature: test failover
     # Then result of query: "show master status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     # """
     # """
-    Then result of query: "select * from runtime_mysql_servers;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
+    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
     """
     <?xml version="1.0"?>
 
-    <resultset statement="select * from runtime_mysql_servers" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s2</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
+    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       <row>
 	    <field name="hostgroup_id">1</field>
 	    <field name="hostname">mysql-s1</field>

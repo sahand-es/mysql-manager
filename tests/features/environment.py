@@ -1,6 +1,6 @@
 import os
 from testcontainers.core.image import DockerImage
-from tests.integration_test.environment.test_environemt_factory import TestEnvironmentFactory
+from tests.integration_test.environment.test_environment_factory import TestEnvironmentFactory
 
 def before_all(context):
     context.mysql_manager_image = "mysql-manager:latest"

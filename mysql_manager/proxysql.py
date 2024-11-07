@@ -73,7 +73,10 @@ class ProxySQL(BaseServer):
             with db.cursor() as cursor:
                 try: 
                     ## TODO: delete all old servers and configs
-                    cursor.execute("INSERT INTO mysql_replication_hostgroups (writer_hostgroup,reader_hostgroup,comment) VALUES (0,1,'main')")
+                    cursor.execute("select * from mysql_replication_hostgroups")
+                    result = cursor.fetchone()
+                    if result is None:
+                        cursor.execute("INSERT INTO mysql_replication_hostgroups (writer_hostgroup,reader_hostgroup,comment) VALUES (0,1,'main')")
                     cursor.execute("load mysql servers to runtime")
                     cursor.execute("save mysql servers to disk")
                     cursor.execute(f"UPDATE global_variables SET variable_value='{self.monitor_user}' WHERE variable_name='mysql-monitor_username'")
@@ -83,7 +86,10 @@ class ProxySQL(BaseServer):
                     # cursor.execute("INSERT INTO mysql_query_rules (active, match_digest, destination_hostgroup, apply) VALUES (1, '^SELECT.*', 1, 0)")
                     # cursor.execute("load mysql query rules to runtime")
                     # cursor.execute("save mysql query rules to disk")
-                    cursor.execute(f"INSERT INTO mysql_users (username,password) VALUES ('{self.mysql_user}','{self.mysql_password}')")
+                    cursor.execute("select * from mysql_users")
+                    result = cursor.fetchone()
+                    if result is None:
+                        cursor.execute(f"INSERT INTO mysql_users (username,password) VALUES ('{self.mysql_user}','{self.mysql_password}')")
                     cursor.execute("load mysql users to runtime")
                     cursor.execute("save mysql users to disk")
                     result = cursor.fetchall()

@@ -1,6 +1,6 @@
 Feature: test migrate remote
   setup cluster nodes, setup another mysql, add data to it, migrate its data to mysql manager cluster and promote cluster 
-
+## TODO: migrate from wrong server (version, config, etc.)
   Scenario: test migration to cluster with two servers and promotion
     Given setup default proxysql with name: proxysql and image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
     And setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64

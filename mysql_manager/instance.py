@@ -308,9 +308,10 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
     def _generate_change_master_command(self, repl_user: str, repl_password: str) -> str:
         return f"""
 CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.source.host}', 
+    SOURCE_PORT={self.source.port},
     SOURCE_USER='{repl_user}',
     SOURCE_PASSWORD='{repl_password}',
-    SOURCE_CONNECT_RETRY = 1,
+    SOURCE_CONNECT_RETRY = 60,
     SOURCE_RETRY_COUNT = 10,
     SOURCE_AUTO_POSITION = 1; 
 """
@@ -366,7 +367,6 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.source.host}',
                     )
                     cursor.execute("SET PERSIST READ_ONLY=1")
                     cursor.execute("START REPLICA")
-                    result = cursor.fetchone()
                 except Exception as e:
                     self._log(str(e)) 
                     raise MysqlReplicationException()
@@ -382,7 +382,7 @@ CHANGE REPLICATION SOURCE TO SOURCE_HOST='{self.source.host}',
                 try:
                     cursor.execute("USE mysql;")
                     cursor.execute(
-                        f"CREATE EVENT pitr ON SCHEDULE EVERY {minute_intervals} MINUTE DO FLUSH BINARY LOGS;"
+                        f"CREATE EVENT IF NOT EXISTS pitr ON SCHEDULE EVERY {minute_intervals} MINUTE DO FLUSH BINARY LOGS;"
                     )
                 except Exception as e:
                     self._log(str(e))

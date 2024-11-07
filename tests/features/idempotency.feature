@@ -1,0 +1,2 @@
+## proxysql rules 
+## mysql event

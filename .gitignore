@@ -6,4 +6,5 @@ config.ini
 __pycache__
 
 tests/integration_test/configs
-configs
+configs/ 
+cluster-spec.yaml

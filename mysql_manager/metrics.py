@@ -3,7 +3,6 @@ from prometheus_client import Counter, Gauge
 # Prometheus Metrics
 # Counters
 FAILOVER_ATTEMPTS = Counter('mysql_failover_attempts', 'Number of failover attempts made')
-SUCCESSFUL_FAILOVERS = Counter('mysql_successful_failovers', 'Number of successful failovers')
 REPLICATION_RESTARTS = Counter('mysql_replication_restarts', 'Number of replication restarts on replicas')
 CLUSTER_FAILURES = Counter('mysql_cluster_failures', 'Total number of cluster failures (master and replica down)')
 

@@ -21,8 +21,7 @@ from mysql_manager.exceptions import (
 )
 from mysql_manager.constants import *
 from mysql_manager.metrics import (
-    FAILOVER_ATTEMPTS, 
-    SUCCESSFUL_FAILOVERS,
+    FAILOVER_ATTEMPTS,
     REPLICATION_RESTARTS,
     CLUSTER_FAILURES,
     MASTER_UP_STATUS,
@@ -281,18 +280,23 @@ class ClusterManager:
         
         self.proxysqls[0].add_backend(self.src, 1, True)
 
-    ## TODO: merge these two join methods
     def join_source_to_remote(self, retry: int=1):
         ## TODO: check remote plugin installed 
         ## TODO: check remote clone conditions
         ## TODO: check remote server id
-        self._log("Joining source to remote")    
-        self.src.install_plugin("clone", "mysql_clone.so")
+        self._log("Joining source to remote")
+        
+        self.src.status = MysqlStatus.CLONING_REMOTE.value
+        if self.repl is not None:
+            self.repl.status = MysqlStatus.UP.value
+        self._write_cluster_state()
 
+        self.src.install_plugin("clone", "mysql_clone.so")
         self.src.run_command(
             f"set persist clone_valid_donor_list='{self.remote.host}:{self.remote.port}'"
         )
         self.src.run_command("set persist read_only=0")
+
         ## we do not proceed until clone is successful
         while True:
             try:
@@ -306,6 +310,9 @@ class ClusterManager:
                     break
                 self._log("Failed to clone remote. Trying again...")
                 time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
+
+        self.src.status = MysqlStatus.REPLICATING_REMOTE.value
+        self._write_cluster_state()
 
         src_main_password = self.src.password
         src_main_user = self.src.user

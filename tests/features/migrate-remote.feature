@@ -15,6 +15,12 @@ Feature: test migrate remote
     And init mysql cluster spec standby of remote mysql
     And sleep 50 seconds
     ## testing clone
+    Then cluster status must be
+    """
+    source=replicating_remote
+    replica=up
+
+    """
     Then result of query: "select * from remotedb.t1;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
@@ -59,7 +65,13 @@ Feature: test migrate remote
     ## test promotion
     Given promote mysql cluster 
     And sleep 50 seconds
-    Then result of query: "select * from remotedb.t1;" with user: root and password: root on host: mysql-s2 and port: 3306 should be
+    Then cluster status must be
+    """
+    source=up
+    replica=up
+    
+    """
+    And result of query: "select * from remotedb.t1;" with user: root and password: root on host: mysql-s2 and port: 3306 should be
     """
     <?xml version="1.0"?>
 
@@ -233,7 +245,13 @@ Feature: test migrate remote
     """
     Given restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And sleep 30 seconds
-    Then result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
+    Then cluster status must be
+    """
+    source=up
+    replica=up
+    
+    """
+    And result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
 
@@ -316,7 +334,13 @@ Feature: test migrate remote
     And init mysql cluster spec standby of remote mysql
     And sleep 30 seconds
     ## testing clone
-    Then result of query: "select * from remotedb.t1;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
+    Then cluster status must be
+    """
+    source=replicating_remote
+    replica=down
+
+    """
+    And result of query: "select * from remotedb.t1;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
 
@@ -360,7 +384,13 @@ Feature: test migrate remote
     ## test promotion
     Given promote mysql cluster 
     And sleep 30 seconds
-    Then result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
+    Then cluster status must be
+    """
+    source=up
+    replica=down
+    
+    """
+    And result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
 
@@ -493,7 +523,13 @@ Feature: test migrate remote
     """
     Given restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And sleep 30 seconds
-    Then result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
+    Then cluster status must be
+    """
+    source=up
+    replica=down
+    
+    """
+    And result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
 
@@ -562,7 +598,13 @@ Feature: test migrate remote
     And init mysql cluster spec standby of remote mysql
     And sleep 30 seconds
     ## testing clone
-    Then result of query: "select * from remotedb.t1;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
+    Then cluster status must be
+    """
+    source=replicating_remote
+    replica=down
+
+    """
+    And result of query: "select * from remotedb.t1;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
 
@@ -606,7 +648,13 @@ Feature: test migrate remote
     ## test promotion
     Given promote mysql cluster 
     And sleep 30 seconds
-    Then result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
+    Then cluster status must be
+    """
+    source=up
+    replica=down
+    
+    """
+    And result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
 
@@ -743,7 +791,13 @@ Feature: test migrate remote
     """
     Given restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And sleep 30 seconds
-    Then result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
+    Then cluster status must be
+    """
+    source=up
+    replica=down
+    
+    """
+    And result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
 
@@ -760,7 +814,7 @@ Feature: test migrate remote
     # Then result of query: "show master status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     # """
     # """
-    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
+    And result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
     """
     <?xml version="1.0"?>
 
@@ -812,6 +866,12 @@ Feature: test migrate remote
     And init mysql cluster spec standby of remote mysql
     And sleep 30 seconds
     ## testing clone
+    Then cluster status must be
+    """
+    source=replicating_remote
+    replica=down
+
+    """
     Then result of query: "select * from remotedb.t1;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
@@ -856,7 +916,13 @@ Feature: test migrate remote
     ## test promotion
     Given promote mysql cluster 
     And sleep 30 seconds
-    Then result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
+    Then cluster status must be
+    """
+    source=up
+    replica=down
+    
+    """
+    And result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
 
@@ -989,7 +1055,13 @@ Feature: test migrate remote
     """
     Given restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And sleep 30 seconds
-    Then result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
+    Then cluster status must be
+    """
+    source=up
+    replica=down
+    
+    """
+    And result of query: "show replica status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     """
     <?xml version="1.0"?>
 

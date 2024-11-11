@@ -5,6 +5,9 @@ class MysqlStatus(Enum):
     DOWN = "down"
     NOT_REPLICA = "not_replica"
     REPLICATION_THREADS_STOPPED = "replication_threads_stopped"
+    CLONING_REMOTE = "cloning"
+    REPLICATING_REMOTE = "replicating_remote"
+
 
 class MysqlReplicationProblem(Enum):
     IO_THREAD_NOT_RUNNING = "io_thread_not_running" 
@@ -30,6 +33,7 @@ class MysqlClusterState(Enum):
     CREATED = "created" 
     NEW = "new"
     STANDBY = "standby"
+
 
 class MysqlRoles(Enum):
     SOURCE = "source"

@@ -163,3 +163,13 @@ def evaluate_query_result(context, query, user, password, host, port):
     output = output.split("mysql: [Warning] Using a password on the command line interface can be insecure.\n")
     output = output[1]
     assert xmltodict.parse(output) == xmltodict.parse(expected_result)
+
+
+@then('cluster status must be')
+def evaluate_query_result(context):
+    expected_result = context.text
+    output = context.test_env.mysql_manager.exec(
+        "python cli/mysql-cli.py get-cluster-status"
+    ).output.decode()
+    logger.log(level=1, msg=output)
+    assert output == expected_result

@@ -5,6 +5,7 @@ from configparser import ConfigParser
 import click
 import yaml
 import logging
+import signal
 
 from mysql_manager.etcd import EtcdClient
 from mysql_manager.cluster import ClusterManager
@@ -64,7 +65,6 @@ def mysql(ctx):
     pass
 
 
-
 @cli.command()
 def promote():
     if cluster_data_handler.get_cluster_state() != MysqlClusterState.STANDBY.value:
@@ -119,6 +119,16 @@ def add(host, user, password, name, port):
             "role": MysqlRoles.REPLICA.value,
         }
     )
+
+
+@cli.command()
+def get_cluster_status():
+    # state = etcd_client.read_status()
+    with open(CLUSTER_STATE_FILE_PATH, "r") as sf:
+        state = yaml.safe_load(sf)
+
+    print("source="+state.get("source"))
+    print("replica="+state.get("replica"))
 
 
 @mysql.command()
@@ -192,30 +202,21 @@ def create_config_file_from_env(nodes_count: int):
         config.write(configfile)
 
 
-
 def signal_handler(signum, frame):
     raise ProgramKilled()
 
+
 @mysql.command()
-# @click.option("--nodes", help="Node count for mysql cluster", required=False, default=1)
 def run():
-    # signal.signal(signal.SIGTERM, signal_handler)
-    # signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
     # create_config_file_from_env(nodes_count=nodes)
     print("Starting cluster manager...")
-    clm = ClusterManager()
-    clm.run()
-
-
-@mysql.command()
-def get_cluster_status():
-    # state = etcd_client.read_status()
-    with open(CLUSTER_STATE_FILE_PATH, "r") as sf:
-        state = yaml.safe_load(sf)
-
-    print("source="+state.get("source"))
-    print("replica="+state.get("replica"))
-
+    try:
+        clm = ClusterManager()
+        clm.run()
+    except ProgramKilled:
+        print("Received termination signal. Exiting...")
 
 @cli.group()
 @click.pass_context

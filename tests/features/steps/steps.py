@@ -169,7 +169,7 @@ def evaluate_query_result(context, query, user, password, host, port):
 def evaluate_query_result(context):
     expected_result = context.text
     output = context.test_env.mysql_manager.exec(
-        "python cli/mysql-cli.py get-cluster-status"
+        "python cli/mysql-cli.py mysql get-cluster-status"
     ).output.decode()
     logger.log(level=1, msg=output)
     assert output == expected_result

@@ -121,7 +121,7 @@ def add(host, user, password, name, port):
     )
 
 
-@cli.command()
+@mysql.command()
 def get_cluster_status():
     # state = etcd_client.read_status()
     with open(CLUSTER_STATE_FILE_PATH, "r") as sf:

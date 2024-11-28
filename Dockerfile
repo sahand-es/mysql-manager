@@ -1,5 +1,4 @@
-# FROM hub.hamdocker.ir/library/python:3.11.3
-FROM docker.arvancloud.ir/library/python:3.11.3
+FROM hub.hamdocker.ir/library/python:3.11.3
 COPY requirements.txt .
 COPY pip.conf /root/.pip/
 RUN pip install -r requirements.txt

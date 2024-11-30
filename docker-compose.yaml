@@ -1,24 +1,16 @@
 version: '3'
 
 services:
-  # mm:
-  #   # image: registry.hamdocker.ir/public/mysql-manager:b212be8e
-  #   build: .
-  #   command: --nodes 1 
-  #   environment: 
-  #     MYSQL_S1_HOST: mysql-s1
-  #     MYSQL_S2_HOST: mysql-s2
-  #     MYSQL_ROOT_PASSWORD: root
-  #     MYSQL_NONPRIV_USER: hamadmin
-  #     MYSQL_NONPRIV_PASSWORD: password
-  #     MYSQL_REPL_PASSWORD: repl
-  #     MYSQL_EXPORTER_PASSWORD: exporter
-  #     PROXYSQL_HOST: proxysql
-  #     PROXYSQL_PASSWORD: pwd 
-  #     PROXYSQL_MON_PASSWORD: pwd
-    # volumes:
-    # - './tests/config/mm-config-mysql-2.ini:/etc/mm/config.ini'
-    # - './tests/config/mm-config-mysql-1.ini:/etc/mm/config-mysql-1.ini'
+  mm:
+    # image: registry.hamdocker.ir/public/mysql-manager:b212be8e
+    build: .
+    environment: 
+      ETCD_HOST: etcd
+      ETCD_USERNAME: mm
+      ETCD_PASSWORD: password
+      ETCD_PREFIX: mm/cluster1/
+    volumes:
+    - './tests/config/mm-config-mysql-2.yaml:/etc/mm/cluster-spec.yaml'
   etcd: 
     image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     command: 
@@ -33,12 +25,15 @@ services:
         - --listen-peer-urls=http://0.0.0.0:2380
         - --auto-compaction-mode=revision
         - --auto-compaction-retention=5
+    # volumes:
+    # - ./etcd-data/:/var/lib/etcd/
   mysql-s1:
     image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
     environment:
       MYSQL_ROOT_PASSWORD: 'root'
     volumes:
       - './tests/config/mysql-s1.cnf:/etc/mysql/conf.d/mysql.cnf'
+      # - './mysql-s1-data:/var/lib/mysql'
     restart: always
   mysql-s2:
     image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
@@ -46,25 +41,23 @@ services:
       MYSQL_ROOT_PASSWORD: 'root'
     volumes:
       - './tests/config/mysql-s2.cnf:/etc/mysql/conf.d/mysql.cnf'
+      # - './mysql-s2-data:/var/lib/mysql'
     restart: always
   mysql-exporter-s1: 
     image: hub.hamdocker.ir/prom/mysqld-exporter:v0.15.1
     command: "--config.my-cnf=/etc/my.cnf"
     volumes:
       - './tests/config/mysql-exporter-s1.cnf:/etc/my.cnf'
-    ports: 
-    - 9105:9104
   mysql-exporter-s2: 
     image: hub.hamdocker.ir/prom/mysqld-exporter:v0.15.1
     command: "--config.my-cnf=/etc/my.cnf"
     volumes:
       - './tests/config/mysql-exporter-s2.cnf:/etc/my.cnf'
-    ports: 
-    - 9104:9104
   proxysql: 
     image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
     volumes:
       - './tests/config/proxysql.cnf:/etc/proxysql.cnf'
+      # - './proxysql-data:/var/lib/proxysql'
   promtheus: 
     image: hub.hamdocker.ir/prom/prometheus
     volumes: 

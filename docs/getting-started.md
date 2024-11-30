@@ -49,3 +49,10 @@ The output is like this:
 source=up
 replica=up
 ```
+
+
+## destroy
+to destroy the containers run:
+```sh
+docker compose down
+```

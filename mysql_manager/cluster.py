@@ -7,7 +7,7 @@ from mysql_manager.instance import Mysql
 from mysql_manager.etcd import EtcdClient
 from mysql_manager.dto import ClusterData
 from mysql_manager.base import BaseServer
-from mysql_manager.proxysql import ProxySQL
+# from mysql_manager.proxysql import ProxySQL
 from mysql_manager.enums import (
     MysqlReplicationProblem,
     MysqlStatus,
@@ -32,7 +32,7 @@ class ClusterManager:
     def __init__(self, config_file: str=DEFAULT_CONFIG_PATH):
         self.src: Mysql = None
         self.repl: Mysql = None
-        self.proxysqls: list[ProxySQL] = [] 
+        # self.proxysqls: list[ProxySQL] = [] 
         self.users: dict = {} 
         self.remote: Mysql = None
         self.config_file = config_file
@@ -46,7 +46,7 @@ class ClusterManager:
         print(str(datetime.datetime.now()) + "  " + msg)
 
     def _validate_cluster_spec(self, spec: dict):
-        if len(spec["mysqls"]) == 0 or len(spec["proxysqls"]) == 0: 
+        if len(spec["mysqls"]) == 0: 
             raise MysqlClusterConfigError()
         
     def _load_cluster_data(self):
@@ -63,15 +63,15 @@ class ClusterManager:
         if remote_dto is not None: 
             self.remote = Mysql(name=REMOTE_SOURCE_NAME, **asdict(remote_dto))
 
-        self.proxysqls.append(
-            ProxySQL(
-                **self.cluster_data_handler.get_proxysql(), 
-                mysql_user=self.users["nonprivUser"],
-                mysql_password=self.users["nonprivPassword"],
-                monitor_user="proxysql",
-                monitor_password=self.users["proxysqlMonPassword"]
-            ),
-        )
+        # self.proxysqls.append(
+        #     ProxySQL(
+        #         **self.cluster_data_handler.get_proxysql(), 
+        #         mysql_user=self.users["nonprivUser"],
+        #         mysql_password=self.users["nonprivPassword"],
+        #         monitor_user="proxysql",
+        #         monitor_password=self.users["proxysqlMonPassword"]
+        #     ),
+        # )
         
     def run(self):
         while not self.cluster_data_handler.is_cluster_data_available(): 
@@ -145,7 +145,7 @@ class ClusterManager:
                 ## TODO: use etcd txn
                 self.cluster_data_handler.set_mysql_role(self.src.name, MysqlRoles.REPLICA.value)
                 self.cluster_data_handler.set_mysql_role(self.repl.name, MysqlRoles.SOURCE.value)
-                self.proxysqls[0].remove_backend(self.src)
+                # self.proxysqls[0].remove_backend(self.src)
                 ## TODO: let all relay logs to be applied before resetting replication
                 self.repl.reset_replication()
                 self.switch_src_and_repl()
@@ -258,7 +258,7 @@ class ClusterManager:
                 self.src.ping()
                 if self.repl is not None:
                     self.repl.ping()
-                self.proxysqls[0].ping()
+                # self.proxysqls[0].ping()
                 return
             except Exception as e:
                 time.sleep(RETRY_WAIT_SECONDS)
@@ -276,9 +276,9 @@ class ClusterManager:
         self.src.create_database(DEFAULT_DATABASE)
         self.src.create_monitoring_user(self.users["exporterPassword"])
         self.src.create_nonpriv_user(self.users["nonprivUser"], self.users["nonprivPassword"])
-        self.src.create_new_user("proxysql", self.users["proxysqlMonPassword"], ["USAGE", "REPLICATION CLIENT"])
+        # self.src.create_new_user("proxysql", self.users["proxysqlMonPassword"], ["USAGE", "REPLICATION CLIENT"])
         
-        self.proxysqls[0].add_backend(self.src, 1, True)
+        # self.proxysqls[0].add_backend(self.src, 1, True)
 
     def join_source_to_remote(self, retry: int=1):
         ## TODO: check remote plugin installed 
@@ -346,7 +346,7 @@ class ClusterManager:
 
         self.check_servers_up(retry=retry)
         self.start_mysql_replication()
-        self.proxysqls[0].add_backend(self.repl, 1, False)
+        # self.proxysqls[0].add_backend(self.repl, 1, False)
 
     def start(self):
         # TODO: make proxysql and src initial setup idempotent
@@ -355,14 +355,8 @@ class ClusterManager:
 
         self._log("Initializing config of servers...")
         if self.cluster_data_handler.get_cluster_state() == MysqlClusterState.NEW.value:
-            self.proxysqls[0].initialize_setup()
+            # self.proxysqls[0].initialize_setup()
             self.config_src_initial_setup()
             ## TODO: what if we restart before writing cluster data?
             self.cluster_data_handler.update_cluster_state(MysqlClusterState.CREATED.value)
-
-        # if (
-        #     self.repl is not None
-        #     and not self.repl.joined 
-        # ):
-        #     self.add_replica_to_master(retry=10)
 

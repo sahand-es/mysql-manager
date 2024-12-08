@@ -1,10 +1,12 @@
 import yaml
-import time
 from testcontainers.core.container import Network
 from tests.integration_test.environment.etcd.etcd_container_provider import EtcdContainerProvider
 from tests.integration_test.environment.mysql.mysql_container_provider import MysqlContainerProvider
 from tests.integration_test.environment.mysql_manager.mysql_manager_container_provider import MysqlManagerContainerProvider
 from tests.integration_test.environment.proxysql.proxysql_container_provider import ProxysqlContainerProvider
+from tests.integration_test.environment.haproxy.haproxy_container_provider import (
+    HAProxyContainerProvider
+)
 
 
 class TestEnvironmentFactory:
@@ -15,6 +17,7 @@ class TestEnvironmentFactory:
         self.proxysqls = []
         self.mysql_manager = None
         self.etcd = None
+        self.haproxys = []
         self.remote = None
         self.network = Network().create()
 
@@ -127,7 +130,6 @@ mysql_variables=
         
         component.setup()
         component.start()
-        time.sleep(10)
 
     def setup_proxysql(self, proxysql):
         component = ProxysqlContainerProvider(
@@ -150,7 +152,6 @@ mysql_variables=
         )
         component.setup()
         component.start()
-        time.sleep(10)
 
     def setup_mysql_manager(self, mysql_manager, remote: dict=None):
         self.mysql_manager = MysqlManagerContainerProvider(
@@ -162,7 +163,17 @@ mysql_variables=
         self.mysql_manager.set_env(mysql_manager["envs"])
         self.mysql_manager.setup()
         self.mysql_manager.start()
-        time.sleep(10)
+    
+    def setup_haproxy(self, haproxy):
+        component = HAProxyContainerProvider(
+            name=haproxy["name"],
+            network=self.network,
+            image=haproxy["image"],
+        )
+        component.set_env(haproxy["envs"])
+        self.haproxys.append(component)
+        component.setup()
+        component.start()
     
     def setup_etcd(self, etcd):
         self.etcd = EtcdContainerProvider(
@@ -176,8 +187,8 @@ mysql_variables=
     def stop(self):
         for mysql in self.mysqls:
             mysql.destroy()
-        for proxysql in self.proxysqls:
-            proxysql.destroy()
+        for haproxy in self.haproxys:
+            haproxy.destroy()
         self.mysql_manager.destroy()
         self.etcd.destroy()
         if self.remote is not None:
@@ -204,4 +215,3 @@ mysql_variables=
                 "envs": envs,
             }
         )
-        time.sleep(50) 

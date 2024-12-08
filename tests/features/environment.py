@@ -4,6 +4,7 @@ from tests.integration_test.environment.test_environment_factory import TestEnvi
 
 def before_all(context):
     context.mysql_manager_image = "mysql-manager:latest"
+    context.haproxy_image = "mm-haproxy:latest"
     if os.getenv("BUILD_IMAGE", "false") == "true":
         DockerImage(path=".", tag=context.mysql_manager_image).build()
 

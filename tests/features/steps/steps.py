@@ -48,6 +48,20 @@ def start_mysql_manager(context, name, etcd_host, etcd_username, etcd_password, 
         {"name": name, "image": context.mysql_manager_image, "envs": envs}
     )
 
+
+@given("setup haproxy with name {name} with env ETCD_HOST={etcd_host} ETCD_USERNAME={etcd_username} ETCD_PASSWORD={etcd_password} ETCD_PREFIX={etcd_prefix}")
+def start_haproxy(context, name, etcd_host, etcd_username, etcd_password, etcd_prefix):
+    envs = {
+        "ETCD_HOST": etcd_host,
+        "ETCD_USERNAME": etcd_username,
+        "ETCD_PASSWORD": etcd_password,
+        "ETCD_PREFIX": etcd_prefix
+    }
+    context.test_env.setup_haproxy(
+        {"name": name, "image": context.haproxy_image, "envs": envs}
+    )
+
+
 @given('setup mysql_manager with remote({rhost}, {ruser}, {rpassword}, {rport:d}) with name {name:w} with env ETCD_HOST={etcd_host:w} ETCD_USERNAME={etcd_username:w} ETCD_PASSWORD={etcd_password:w} ETCD_PREFIX={etcd_prefix}')
 def start_mysql_manager_with_remote(context, rhost, ruser, rpassword, rport, name, etcd_host, etcd_username, etcd_password, etcd_prefix):
     envs = {

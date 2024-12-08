@@ -2,8 +2,7 @@ Feature: test migrate remote
   setup cluster nodes, setup another mysql, add data to it, migrate its data to mysql manager cluster and promote cluster 
 ## TODO: migrate from wrong server (version, config, etc.)
   Scenario: test migration to cluster with two servers and promotion
-    Given setup default proxysql with name: proxysql and image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
-    And setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
+    Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
     And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
@@ -12,6 +11,8 @@ Feature: test migrate remote
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
     And setup mysql_manager with remote(remote, root, root, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And setup haproxy with name hap1 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And setup haproxy with name hap2 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And init mysql cluster spec standby of remote mysql
     And sleep 50 seconds
     ## testing clone
@@ -117,10 +118,6 @@ Feature: test migrate remote
       </row>
 
       <row>
-	    <field name="user">proxysql</field>
-      </row>
-
-      <row>
 	    <field name="user">replica</field>
       </row>
 
@@ -192,57 +189,6 @@ Feature: test migrate remote
     </resultset>
     """
 
-    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s2</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-    </resultset>
-    """
     Given restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And sleep 30 seconds
     Then cluster status must be
@@ -268,62 +214,10 @@ Feature: test migrate remote
     # Then result of query: "show master status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     # """
     # """
-    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s2</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-    </resultset>
-    """
 
 
   Scenario: test migration to cluster with one server and promotion
-    Given setup default proxysql with name: proxysql and image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
-    And setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
+    Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
     And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
@@ -331,8 +225,10 @@ Feature: test migrate remote
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
     And setup mysql_manager with remote(remote, root, root, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And setup haproxy with name hap1 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And setup haproxy with name hap2 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And init mysql cluster spec standby of remote mysql
-    And sleep 30 seconds
+    And sleep 50 seconds
     ## testing clone
     Then cluster status must be
     """
@@ -407,10 +303,6 @@ Feature: test migrate remote
 
       <row>
 	    <field name="user">hamadmin</field>
-      </row>
-
-      <row>
-	    <field name="user">proxysql</field>
       </row>
 
       <row>
@@ -485,42 +377,6 @@ Feature: test migrate remote
     </resultset>
     """
 
-    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-    </resultset>
-    """
     Given restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And sleep 30 seconds
     Then cluster status must be
@@ -546,47 +402,10 @@ Feature: test migrate remote
     # Then result of query: "show master status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     # """
     # """
-    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-    </resultset>
-    """
 
 
   Scenario: test migration to cluster with one server and promotion with different password and user in remote 
-    Given setup default proxysql with name: proxysql and image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
-    And setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
+    Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
     And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
@@ -595,6 +414,8 @@ Feature: test migrate remote
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
     And setup mysql_manager with remote(remote, su_remote, su_remote_password, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And setup haproxy with name hap1 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And setup haproxy with name hap2 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And init mysql cluster spec standby of remote mysql
     And sleep 30 seconds
     ## testing clone
@@ -671,10 +492,6 @@ Feature: test migrate remote
 
       <row>
 	    <field name="user">hamadmin</field>
-      </row>
-
-      <row>
-	    <field name="user">proxysql</field>
       </row>
 
       <row>
@@ -753,42 +570,6 @@ Feature: test migrate remote
     </resultset>
     """
 
-    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-    </resultset>
-    """
     Given restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And sleep 30 seconds
     Then cluster status must be
@@ -814,47 +595,10 @@ Feature: test migrate remote
     # Then result of query: "show master status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     # """
     # """
-    And result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-    </resultset>
-    """
-
+    
 
   Scenario: test migration to cluster with one server and promotion with different password and root user in remote 
-    Given setup default proxysql with name: proxysql and image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
-    And setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
+    Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
     And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
@@ -863,8 +607,10 @@ Feature: test migrate remote
     And execute mysql query with user: root, password: password, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
     And execute mysql query with user: root, password: password, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
     And setup mysql_manager with remote(remote, root, password, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And setup haproxy with name hap1 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And setup haproxy with name hap2 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And init mysql cluster spec standby of remote mysql
-    And sleep 30 seconds
+    And sleep 50 seconds
     ## testing clone
     Then cluster status must be
     """
@@ -942,10 +688,6 @@ Feature: test migrate remote
       </row>
 
       <row>
-	    <field name="user">proxysql</field>
-      </row>
-
-      <row>
 	    <field name="user">replica</field>
       </row>
 
@@ -1017,42 +759,6 @@ Feature: test migrate remote
     </resultset>
     """
 
-    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-    </resultset>
-    """
     Given restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And sleep 30 seconds
     Then cluster status must be
@@ -1078,39 +784,4 @@ Feature: test migrate remote
     # Then result of query: "show master status;" with user: root and password: root on host: mysql-s1 and port: 3306 should be
     # """
     # """
-    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
 
-    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-    </resultset>
-    """

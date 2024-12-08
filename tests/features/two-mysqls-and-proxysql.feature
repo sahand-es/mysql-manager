@@ -1,19 +1,38 @@
-Feature: two-mysqls-and-one-proxysql
-  Setup two mysqls and one proxysql with mm
+Feature: two-mysqls-and-two-haproxies
+  Setup two mysqls and two haproxies with mm
 
-  Scenario: check start two mysqls with one proxysql
-    Given setup default proxysql with name: proxysql and image: hub.hamdocker.ir/proxysql/proxysql:2.6.2
-    And setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
+  Scenario: check start two mysqls with two haproxies
+    Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
     And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
     And setup default mysql with server_id 2 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
     And setup mysql_manager with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And setup haproxy with name hap1 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And setup haproxy with name hap2 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And init mysql cluster spec
     And sleep 50 seconds
-    When execute mysql query with user: hamadmin, password: password, host: proxysql and port: 3306 query: use hamdb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');
+    Then cluster status must be
+    """
+    source=up
+    replica=up
+
+    """
+    When execute mysql query with user: hamadmin, password: password, host: hap2 and port: 3306 query: use hamdb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');
     
-    Then result of query: "select * from hamdb.t1;" with user: hamadmin and password: password on host: proxysql and port: 3306 should be
+    Then result of query: "select * from hamdb.t1;" with user: hamadmin and password: password on host: hap1 and port: 3306 should be
+    """
+    <?xml version="1.0"?>
+
+    <resultset statement="select * from hamdb.t1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <row>
+	    <field name="c1">1</field>
+	    <field name="c2">Luis</field>
+      </row>
+    </resultset>
+    """
+
+    Then result of query: "select * from hamdb.t1;" with user: hamadmin and password: password on host: hap2 and port: 3306 should be
     """
     <?xml version="1.0"?>
 
@@ -64,10 +83,6 @@ Feature: two-mysqls-and-one-proxysql
 
       <row>
 	    <field name="user">hamadmin</field>
-      </row>
-
-      <row>
-	    <field name="user">proxysql</field>
       </row>
 
       <row>
@@ -134,58 +149,6 @@ Feature: two-mysqls-and-one-proxysql
 
       <row>
 	    <field name="Database">test</field>
-      </row>
-    </resultset>
-    """
-
-    Then result of query: "select * from mysql_servers order by hostgroup_id, hostname;" with user: radmin and password: pwd on host: proxysql and port: 6032 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select * from mysql_servers order by hostgroup_id, hostname" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="hostgroup_id">0</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s1</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
-      </row>
-
-      <row>
-	    <field name="hostgroup_id">1</field>
-	    <field name="hostname">mysql-s2</field>
-	    <field name="port">3306</field>
-	    <field name="gtid_port">0</field>
-	    <field name="status">ONLINE</field>
-	    <field name="weight">1</field>
-	    <field name="compression">0</field>
-	    <field name="max_connections">1000</field>
-	    <field name="max_replication_lag">0</field>
-	    <field name="use_ssl">0</field>
-	    <field name="max_latency_ms">0</field>
-	    <field name="comment"></field>
       </row>
     </resultset>
     """

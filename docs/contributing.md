@@ -24,6 +24,8 @@ This is needed when you add new python package using `poetry add`
 ```sh
 pip install poetry
 poetry add <package-name>
+## or 
+poetry update <package-name>
 poetry export --without-hashes --format=requirements.txt > requirements.txt
 ```
 

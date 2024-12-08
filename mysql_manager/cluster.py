@@ -120,7 +120,7 @@ class ClusterManager:
 
         if self.repl is not None:  
             if self.must_replica_join_source(self.repl, self.src): 
-                self.join_replica_to_source(retry=1)
+                self.join_replica_to_source(retry=10)
             if (
                 self.repl.status == MysqlStatus.REPLICATION_THREADS_STOPPED.value
                 and self.src.status == MysqlStatus.UP.value
@@ -286,6 +286,7 @@ class ClusterManager:
         ## TODO: check remote server id
         self._log("Joining source to remote")
         
+        # TODO: if self.src is in replicating_remote state do not clone remote
         self.src.status = MysqlStatus.CLONING_REMOTE.value
         if self.repl is not None:
             self.repl.status = MysqlStatus.UP.value
@@ -311,14 +312,17 @@ class ClusterManager:
                 self._log("Failed to clone remote. Trying again...")
                 time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
 
-        self.src.status = MysqlStatus.REPLICATING_REMOTE.value
-        self._write_cluster_state()
-
+        self._log("Waiting for source to become ready")
         src_main_password = self.src.password
         src_main_user = self.src.user
         self.src.password = self.remote.password
         self.src.user = self.remote.user
-        self.check_servers_up(retry=retry)
+        if not self.is_server_up(self.src, retry=retry):
+            return
+
+        self.src.status = MysqlStatus.REPLICATING_REMOTE.value
+        self._write_cluster_state()
+        
         if self.src.user_exists(src_main_user):
             self.src.change_user_password(src_main_user, src_main_password)
         else:
@@ -329,7 +333,8 @@ class ClusterManager:
         self.start_mysql_replication_from_remote()
 
     def join_replica_to_source(self, retry: int=1):
-        self._log("Joining replica to source")    
+        self._log("Joining replica to source")
+        # TODO: do not clone if the gtids are in sync
         self.src.install_plugin("clone", "mysql_clone.so")
         self.repl.install_plugin("clone", "mysql_clone.so")
 
@@ -344,12 +349,12 @@ class ClusterManager:
         except OperationalError as o:
             self._log(str(o))
 
-        self.check_servers_up(retry=retry)
-        self.start_mysql_replication()
+        # TODO: do not continue if this 
+        if self.is_server_up(self.repl, retry=retry):
+            self.start_mysql_replication()
         # self.proxysqls[0].add_backend(self.repl, 1, False)
 
     def start(self):
-        # TODO: make proxysql and src initial setup idempotent
         self._log("Starting cluster setup...")
         self.check_servers_up(retry=10)
 

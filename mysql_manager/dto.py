@@ -22,5 +22,4 @@ class ClusterData:
     mysqls: dict[str: MysqlData]
     remote: MysqlData | None 
     status: ClusterStatus
-    proxysqls: list[dict[str: str]]
     users: dict[str: str]

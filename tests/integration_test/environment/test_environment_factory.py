@@ -84,13 +84,13 @@ mysql_variables=
                 "password": mysql.root_password
             }
         
-        config["proxysqls"] = [
-            {
-                "host": proxysql.name, 
-                "user": proxysql.remote_username, 
-                "password": proxysql.remote_password
-            } for proxysql in self.proxysqls
-        ]
+        # config["proxysqls"] = [
+        #     {
+        #         "host": proxysql.name, 
+        #         "user": proxysql.remote_username, 
+        #         "password": proxysql.remote_password
+        #     } for proxysql in self.proxysqls
+        # ]
         
         config["users"] = {
             "replPassword": "password",

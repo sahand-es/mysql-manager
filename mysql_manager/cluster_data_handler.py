@@ -46,9 +46,9 @@ class ClusterDataHandler:
         cluster_data = self.get_cluster_data()
         return cluster_data.remote
 
-    def get_proxysql(self) -> dict:
-        cluster_data = self.get_cluster_data()
-        return cluster_data.proxysqls[0]
+    # def get_proxysql(self) -> dict:
+    #     cluster_data = self.get_cluster_data()
+    #     return cluster_data.proxysqls[0]
     
     def get_cluster_state(self) -> MysqlClusterState:
         cluster_data = self.get_cluster_data()
@@ -76,7 +76,6 @@ class ClusterDataHandler:
 
         cluster_data = ClusterData(
             mysqls=mysqls,
-            proxysqls=cluster_data_dict["proxysqls"],
             users=cluster_data_dict["users"],
             status=ClusterStatus(state=cluster_data_dict["status"]["state"]),
             remote=remote,

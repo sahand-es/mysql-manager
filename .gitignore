@@ -4,7 +4,8 @@ config.ini
 .env
 .idea
 __pycache__
-
+.env
+.env-test
 tests/integration_test/configs
 configs/ 
 cluster-spec.yaml

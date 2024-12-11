@@ -37,41 +37,6 @@ long_query_time = 1
 slow_query_log_file = /var/lib/mysql/slow.log
 max_connections = 1000
 """
-    
-    def _get_default_proxysql_config_template(self):
-        return """datadir="/var/lib/proxysql"
-admin_variables=
-{{   
-    admin_credentials="{}:{};{}:{}"
-    mysql_ifaces="0.0.0.0:6032"
-    restapi_enabled=true
-    restapi_port=6070
-}}
-mysql_variables=
-{{
-    threads=4
-    max_connections=2048
-    default_query_delay=0
-    default_query_timeout=36000000
-    have_compress=true
-    poll_timeout=2000
-    interfaces="0.0.0.0:3306"
-    default_schema="information_schema"
-    stacksize=1048576
-    server_version="5.5.30"
-    connect_timeout_server=3000
-    monitor_history=600000
-    monitor_connect_interval=60000
-    monitor_ping_interval=10000
-    monitor_read_only_interval=1500
-    monitor_read_only_timeout=500
-    ping_interval_server_msec=120000
-    ping_timeout_server=500
-    commands_stats=true
-    sessions_sort=true
-    connect_retries_on_failure=10
-}}
-"""
 
     def _get_mysql_manager_config(self, remote: dict=None):
         config = {

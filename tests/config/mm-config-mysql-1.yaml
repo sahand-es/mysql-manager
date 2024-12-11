@@ -3,10 +3,6 @@ mysqls:
     host: mysql-s1
     user: root
     password: root
-proxysqls: 
-- host: proxysql
-  user: radmin 
-  password: pwd
 users: 
   replPassword: password
   exporterPassword: exporter

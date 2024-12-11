@@ -119,19 +119,19 @@ class Mysql(BaseServer):
             self._log("Could not connect to mysql")
             raise MysqlConnectionException()
 
-        command = (
-            "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, RELOAD, PROCESS," 
-            "REFERENCES, INDEX, ALTER, SHOW DATABASES, CREATE TEMPORARY TABLES," 
-            "LOCK TABLES, EXECUTE, REPLICATION SLAVE, REPLICATION CLIENT, CREATE VIEW," 
-            f"SHOW VIEW, CREATE ROUTINE, EVENT, TRIGGER ON *.* TO `{user}`@`%`"
-        )
+        access_commands = [
+            f"GRANT ALL ON *.* TO `{user}`@`%` WITH GRANT OPTION",
+            f"REVOKE REPLICATION_SLAVE_ADMIN, CONNECTION_ADMIN, SUPER ON *.* FROM `{user}`@`%`",
+        ]
         with db: 
             with db.cursor() as cursor:
                 try: 
                     cursor.execute(
                         f"CREATE USER IF NOT EXISTS '{user}'@'%' IDENTIFIED WITH mysql_native_password BY '{password}'"
                     )
-                    cursor.execute(command)
+
+                    for command in access_commands:
+                        cursor.execute(command)
                     cursor.execute("FLUSH PRIVILEGES")
                 except Exception as e: 
                     self._log(str(e))

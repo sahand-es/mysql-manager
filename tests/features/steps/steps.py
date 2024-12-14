@@ -141,6 +141,12 @@ def add_mysql_to_cluster(context, host, user, password, name):
         f"python cli/mysql-cli.py add -h {host} -u {user} -p {password} -n {name}"
     )
 
+@given('remove mysql with name: {name}')
+def remove_mysql_from_cluster(context, name):
+    context.test_env.mysql_manager.exec(
+        f"python cli/mysql-cli.py remove -n {name}"
+    )
+
 @given('stop mysql with server_id {server_id:d}')
 def stop_mysql(context, server_id):
     context.test_env.stop_mysql(server_id)

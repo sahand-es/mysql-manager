@@ -16,7 +16,7 @@ from mysql_manager.constants import (
 from mysql_manager.instance import Mysql
 from mysql_manager.cluster_data_handler import ClusterDataHandler
 from mysql_manager.proxysql import ProxySQL
-from mysql_manager.exceptions import ProgramKilled
+from mysql_manager.exceptions import MysqlNodeDoesNotExist, ProgramKilled, SourceDatabaseCannotBeDeleted
 from mysql_manager.enums import *
 
 current_dir = os.getcwd()
@@ -96,6 +96,17 @@ def add(host, user, password, name, port):
         }
     )
 
+@cli.command()
+@click.option('-n', '--name', help='Name for MySQL', required=True)
+def remove(name):
+    try:
+        cluster_data_handler.remove_mysql(
+            name=name,
+        )
+    except MysqlNodeDoesNotExist:
+        print(f"{name} mysql is not in database cluster.")
+    except SourceDatabaseCannotBeDeleted:
+        print(f"{name} mysql can not be removed because it is source database.")
 
 @mysql.command()
 def get_cluster_status():

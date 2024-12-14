@@ -7,7 +7,7 @@ Feature: add replica to cluster
     And setup user mm for etcd with password: password access to path mm/cluster1/
     And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
     And setup mysql_manager with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
-	  And init mysql cluster spec
+    And init mysql cluster spec
     And setup haproxy with name hap1 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And setup haproxy with name hap2 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And sleep 30 seconds
@@ -86,7 +86,7 @@ Feature: add replica to cluster
     And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
     And setup default mysql with server_id 2 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
     And setup mysql_manager with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
-	  And init mysql cluster spec
+    And init mysql cluster spec
     And sleep 40 seconds
     Then cluster status must be
     """
@@ -94,8 +94,8 @@ Feature: add replica to cluster
     replica=up
 
     """
-	  Given add mysql to cluster with host: mysql-s1 and name: s1 and user: root and password: root
-	  And restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    Given add mysql to cluster with host: mysql-s1 and name: s1 and user: root and password: root
+    And restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And sleep 10 seconds
 
     Then cluster status must be

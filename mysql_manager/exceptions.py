@@ -28,6 +28,10 @@ class MysqlNodeDoesNotExist(Exception):
     def __init__(self, name: str) -> None:
         super().__init__(f"Could not remove {name} node")
 
+class MysqlNodeAlreadyExists(Exception):
+    def __init__(self, name: str) -> None:
+        super().__init__(f"Could not add {name} node")
+
 class SourceDatabaseCannotBeDeleted(Exception):
     def __init__(self) -> None:
         super().__init__("Could not remove master database")

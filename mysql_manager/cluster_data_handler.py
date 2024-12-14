@@ -8,6 +8,8 @@ from mysql_manager.enums import MysqlRoles
 from mysql_manager.etcd import EtcdClient
 from dataclasses import asdict
 
+from mysql_manager.exceptions import MysqlNodeDoesNotExist, SourceDatabaseCannotBeDeleted
+
 
 class ClusterDataHandler:
     def __init__(self) -> None:
@@ -40,6 +42,11 @@ class ClusterDataHandler:
 
     def remove_mysql(self, name: str) -> None:
         cluster_data = self.get_cluster_data()
+        mysqls = cluster_data.mysqls
+        if name not in mysqls:
+            raise MysqlNodeDoesNotExist(name)
+        if mysqls[name].role == MysqlRoles.SOURCE.value:
+            raise SourceDatabaseCannotBeDeleted
         cluster_data.mysqls.pop(name)
         self.write_cluster_data(cluster_data)
 

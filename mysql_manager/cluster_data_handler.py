@@ -38,6 +38,11 @@ class ClusterDataHandler:
         cluster_data.mysqls[name] = MysqlData(**mysql_data)
         self.write_cluster_data(cluster_data)
 
+    def remove_mysql(self, name: str) -> None:
+        cluster_data = self.get_cluster_data()
+        cluster_data.mysqls.pop(name)
+        self.write_cluster_data(cluster_data)
+
     def get_users(self) -> dict:
         cluster_data = self.get_cluster_data()
         return cluster_data.users

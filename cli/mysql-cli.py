@@ -96,6 +96,19 @@ def add(host, user, password, name, port):
         }
     )
 
+@cli.command()
+@click.option('-n', '--name', help='Name for MySQL', required=True)
+def remove(name):
+    mysqls_data = cluster_data_handler.get_mysqls()
+    if name not in mysqls_data.keys():
+        print(f"{name} mysql is not in database cluster.")
+        return
+    if mysqls_data[name].role == MysqlRoles.SOURCE.value:
+        print(f"{name} mysql can not be removed because it is source database.")
+        return
+    cluster_data_handler.remove_mysql(
+        name=name,
+    )
 
 @mysql.command()
 def get_cluster_status():

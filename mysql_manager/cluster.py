@@ -30,8 +30,8 @@ from mysql_manager.metrics import (
 
 class ClusterManager: 
     def __init__(self, config_file: str=DEFAULT_CONFIG_PATH):
-        self.src: Mysql = None
-        self.repl: Mysql = None
+        self.src: Mysql | None = None
+        self.repl: Mysql | None = None
         # self.proxysqls: list[ProxySQL] = [] 
         self.users: dict = {} 
         self.remote: Mysql = None
@@ -52,12 +52,17 @@ class ClusterManager:
     def _load_cluster_data(self):
         ## TODO: handle mysql servers with ports other than 3306
         self.users = self.cluster_data_handler.get_users()
+        does_repl_exist = False
         for name, mysql in self.cluster_data_handler.get_mysqls().items():
             if mysql.role == MysqlRoles.SOURCE.value:
                 if self.src is None or self.src.name != name: 
                     self.src = Mysql(name=name, **asdict(mysql))
             elif mysql.role ==  MysqlRoles.REPLICA.value:
-                self.repl = Mysql(name=name, **asdict(mysql))
+                does_repl_exist = True
+                if self.repl is None or self.repl.name != name:
+                    self.repl = Mysql(name=name, **asdict(mysql))
+        if not does_repl_exist:
+            self.repl = None
 
         remote_dto = self.cluster_data_handler.get_remote()
         if remote_dto is not None: 

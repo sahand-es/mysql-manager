@@ -34,5 +34,17 @@ jobs:
     - name: Build image
       run: |
         docker build . -t ${{ vars.REGISTRY_URL }}/mysql-manager:main -t ${{ vars.REGISTRY_URL }}/mysql-manager:${{ steps.meta.outputs.tags }}
+
+    - name: Behave test
+      env:
+        MYSQL_MANAGER_IMAGE: ${{ vars.REGISTRY_URL }}/mysql-manager:${{ steps.meta.outputs.tags }}
+        HAPROXY_IMAGE: ${{ vars.HAPROXY_IMAGE_ADDRESS }}
+      run: |
+        pip install -r requirements.test.txt
+        behave tests/features
+
+    - name: Push image
+      run: |
         docker push ${{ vars.REGISTRY_URL }}/mysql-manager:main &&
         docker push ${{ vars.REGISTRY_URL }}/mysql-manager:${{ steps.meta.outputs.tags }}
+

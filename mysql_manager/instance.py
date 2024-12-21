@@ -8,7 +8,7 @@ from mysql_manager.enums import (
 )
 from mysql_manager.helpers.query_builder import QueryBuilder
 from mysql_manager.dto import MysqlPlugin
-from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException, MysqlAddPITREventException
+from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException, MysqlAddPITREventException, VariableIsNotSetInDatabase
 from mysql_manager.base import BaseServer
 from mysql_manager.constants import DEFAULT_DATABASE
 
@@ -253,6 +253,17 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
                 except Exception as e:
                     self._log(str(e)) 
                     raise e
+
+    def get_variable(
+        self, name: str
+    ) -> str:
+        query = f"SHOW VARIABLES LIKE '{name}';"
+        variable_value_response = self.fetch(query, [])
+        if not variable_value_response:
+            raise VariableIsNotSetInDatabase(
+                variable_name=name
+            )
+        return variable_value_response[0]["Value"]
 
     def get_plugins(
         self, name: str | None = None, status: str | None = None

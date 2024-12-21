@@ -39,3 +39,15 @@ class SourceDatabaseCannotBeDeleted(Exception):
 class PluginsAreNotInstalled(Exception):
     def __init__(self, plugin_names: list[str]) -> None:
         super().__init__(f"These plugins should be installed: {plugin_names}")
+
+class VariableIsNotSetInDatabase(Exception):
+    def __init__(self, variable_name: str) -> None:
+        super().__init__(
+            f"Variable {variable_name} is not set in database"
+        )
+
+class DifferentMysqlVariable(Exception):
+    def __init__(self, variable_name: str, src_value: str, repl_value: str) -> None:
+        super().__init__(
+            f"Variable {variable_name} must be the same in src and repl. src_value={src_value}, repl_value={repl_value}"
+        )

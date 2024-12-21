@@ -1,4 +1,4 @@
-from mysql_manager.exceptions import PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndReplAreInDifferentSeries
+from mysql_manager.exceptions import PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndReplAreInDifferentSeries, WrongMysqlVariableValue
 from mysql_manager.instance import Mysql
 from mysql_manager.enums import PluginStatus
 
@@ -61,10 +61,26 @@ class CloneHelper:
                 src_version=src_version,
                 repl_version=repl_version
             )
+    @classmethod
+    def check_max_allowed_packet(cls, src: Mysql, repl: Mysql):
+        minimum_max_allowed_packet = 2097152
+        src_max_allowed_packet = int(src.get_variable("max_allowed_packet"))
+        repl_max_allowed_packet = int(repl.get_variable("max_allowed_packet"))
+        if src_max_allowed_packet < minimum_max_allowed_packet:
+            raise WrongMysqlVariableValue(
+                variable_name="max_allowed_packet",
+                variable_value=src_max_allowed_packet,
+            )
+        if repl_max_allowed_packet < minimum_max_allowed_packet:
+            raise WrongMysqlVariableValue(
+                variable_name="max_allowed_packet",
+                variable_value=repl_max_allowed_packet,
+            )
 
     @classmethod
     def is_clone_possible(cls, src: Mysql, repl: Mysql) -> bool:
         cls.check_is_same_series(src, repl)
-        cls.check_must_be_the_same_variables(src, repl)
+        cls.check_max_allowed_packet(src, repl)
         cls.check_required_plugins_on_src(src, repl)
+        cls.check_must_be_the_same_variables(src, repl)
         return True

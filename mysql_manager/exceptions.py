@@ -40,6 +40,12 @@ class PluginsAreNotInstalled(Exception):
     def __init__(self, plugin_names: list[str]) -> None:
         super().__init__(f"These plugins should be installed: {plugin_names}")
 
+class WrongMysqlVariableValue(Exception):
+    def __init__(self, variable_name: str, variable_value) -> None:
+        super().__init__(
+            f"Variable {variable_name} has wrong value. value = {variable_value}"
+        )
+
 class VariableIsNotSetInDatabase(Exception):
     def __init__(self, variable_name: str) -> None:
         super().__init__(

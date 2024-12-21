@@ -8,7 +8,7 @@ class CloneHelper:
     def check_required_plugins_on_src(src: Mysql, repl: Mysql):
         src_active_plugins = src.get_plugins(status=PluginStatus.ACTIVE.value)
         repl_active_plugins = repl.get_plugins(status=PluginStatus.ACTIVE.value)
-        required_plugins_on_src = src_active_plugins - repl_active_plugins
+        required_plugins_on_src = repl_active_plugins - src_active_plugins
         if required_plugins_on_src:
             raise PluginsAreNotInstalled(
                 plugin_names=[

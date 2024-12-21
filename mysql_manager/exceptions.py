@@ -51,3 +51,9 @@ class DifferentMysqlVariable(Exception):
         super().__init__(
             f"Variable {variable_name} must be the same in src and repl. src_value={src_value}, repl_value={repl_value}"
         )
+
+class SourceAndReplAreInDifferentSeries(Exception):
+    def __init__(self, src_version: str, repl_version: str) -> None:
+        super().__init__(
+            f"src and repl are in different series. src_version={src_version}, repl_version={repl_version}"
+        )

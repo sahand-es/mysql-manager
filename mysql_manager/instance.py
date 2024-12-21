@@ -6,7 +6,7 @@ from mysql_manager.enums import (
     MysqlReplicationProblem,
     MysqlStatus,
 )
-from helpers.query_builder import QueryBuilder
+from mysql_manager.helpers.query_builder import QueryBuilder
 from mysql_manager.dto import MysqlPlugin
 from mysql_manager.exceptions import MysqlConnectionException, MysqlReplicationException, MysqlAddPITREventException
 from mysql_manager.base import BaseServer

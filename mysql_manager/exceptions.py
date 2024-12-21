@@ -61,5 +61,11 @@ class DifferentMysqlVariable(Exception):
 class SourceAndReplAreInDifferentSeries(Exception):
     def __init__(self, src_version: str, repl_version: str) -> None:
         super().__init__(
-            f"src and repl are in different series. src_version={src_version}, repl_version={repl_version}"
+            f"Src and repl are in different series. src_version={src_version}, repl_version={repl_version}"
+        )
+
+class CloneIsNotPossible(Exception):
+    def __init__(self) -> None:
+        super().__init__(
+            f"Clone is not possible"
         )

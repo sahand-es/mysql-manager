@@ -3,6 +3,7 @@ from pymysql.err import OperationalError
 from dataclasses import asdict
 from prometheus_client import start_http_server
 
+from mysql_manager.helpers.clone_compatibility_checker import CloneCompatibilityChecker
 from mysql_manager.instance import Mysql
 from mysql_manager.etcd import EtcdClient
 from mysql_manager.dto import ClusterData
@@ -16,6 +17,7 @@ from mysql_manager.enums import (
 )
 from mysql_manager.cluster_data_handler import ClusterDataHandler
 from mysql_manager.exceptions import (
+    CloneIsNotPossible,
     MysqlConnectionException,
     MysqlClusterConfigError,
 )
@@ -272,8 +274,6 @@ class ClusterManager:
         self.src.create_nonpriv_user(self.users["nonprivUser"], self.users["nonprivPassword"])
 
     def join_source_to_remote(self, retry: int=1):
-        ## TODO: check remote plugin installed 
-        ## TODO: check remote clone conditions
         ## TODO: check remote server id
         self._log("Joining source to remote")
         
@@ -288,6 +288,9 @@ class ClusterManager:
             f"set persist clone_valid_donor_list='{self.remote.host}:{self.remote.port}'"
         )
         self.src.run_command("set persist read_only=0")
+
+        if not CloneCompatibilityChecker(src=self.src, remote=self.remote).is_clone_possible():
+            raise CloneIsNotPossible
 
         ## we do not proceed until clone is successful
         while True:

@@ -30,10 +30,26 @@ def start_mysql_with_name(context, server_id, name, image):
         name=name,
     )
 
+@given('setup default mysql with config with server_id {server_id:d} and name {name} and image: {image}')
+def start_mysql_with_name_and_config(context, server_id, name, image):
+    config = context.text
+    context.test_env.setup_mysql_with_name(
+        {"server_id": server_id, "image": image},
+        name=name,
+        config=config
+    )
+
 @given('setup default mysql with server_id {server_id:d} and image: {image}')
-def start_mysql(context, server_id, image):
+def start_mysql_with_image(context, server_id, image):
     context.test_env.setup_mysql(
         {"server_id": server_id, "image": image}
+    )
+
+@given('setup mysql with config with server_id {server_id:d} and image: {image}')
+def start_mysql_with_config(context, server_id, image):
+    config = context.text
+    context.test_env.setup_mysql(
+        {"server_id": server_id, "image": image}, config=config
     )
 
 @given('setup mysql_manager with name {name:w} with env ETCD_HOST={etcd_host:w} ETCD_USERNAME={etcd_username:w} ETCD_PASSWORD={etcd_password:w} ETCD_PREFIX={etcd_prefix}')
@@ -193,3 +209,8 @@ def evaluate_query_result(context):
     ).output.decode()
     logger.log(level=1, msg=output)
     assert output == expected_result
+
+@then('logs of mm must contain')
+def search_for_logs_in_mm(context,):
+    error_text = context.text
+    assert error_text in context.test_env.mysql_manager.logs()

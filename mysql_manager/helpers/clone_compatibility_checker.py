@@ -1,7 +1,10 @@
-from mysql_manager.exceptions import PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndReplAreInDifferentSeries, WrongMysqlVariableValue
+import logging
+from mysql_manager.clone_exceptions import CloneException, PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndReplAreInDifferentSeries, WrongMysqlVariableValue
+from mysql_manager.exceptions import VariableIsNotSetInDatabase
 from mysql_manager.instance import Mysql
 from mysql_manager.enums import PluginStatus
 
+logger = logging.getLogger(__name__)
 
 class CloneCompatibilityChecker:
     MINIMUM_MAX_ALLOWED_PACKET = 2097152
@@ -81,8 +84,12 @@ class CloneCompatibilityChecker:
             )
 
     def is_clone_possible(self) -> bool:
-        self.check_is_same_series()
-        self.check_max_allowed_packet()
-        self.check_required_plugins_on_src()
-        self.check_must_be_the_same_variables()
+        try:
+            self.check_is_same_series()
+            self.check_max_allowed_packet()
+            self.check_required_plugins_on_src()
+            self.check_must_be_the_same_variables()
+        except (CloneException, VariableIsNotSetInDatabase) as e:
+            logger.error(str(e))
+            return False
         return True

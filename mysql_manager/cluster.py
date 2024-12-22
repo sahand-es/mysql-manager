@@ -17,7 +17,6 @@ from mysql_manager.enums import (
 )
 from mysql_manager.cluster_data_handler import ClusterDataHandler
 from mysql_manager.exceptions import (
-    CloneIsNotPossible,
     MysqlConnectionException,
     MysqlClusterConfigError,
 )
@@ -289,11 +288,10 @@ class ClusterManager:
         )
         self.src.run_command("set persist read_only=0")
 
-        if not CloneCompatibilityChecker(src=self.src, remote=self.remote).is_clone_possible():
-            raise CloneIsNotPossible
-
         ## we do not proceed until clone is successful
         while True:
+            if not CloneCompatibilityChecker(src=self.src, remote=self.remote).is_clone_possible():
+                time.sleep(CLONE_COMPATIBILITY_CHECK_INTERVAL_SECONDS)
             try:
                 self._log("Cloning remote server")
                 self.src.run_command(

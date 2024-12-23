@@ -29,3 +29,9 @@ class CloneIsNotPossible(CloneException):
             f"Clone is not possible"
         )
 
+class RemoteUserReplicationPasswordExceedsMaxLength(CloneException):
+    def __init__(self) -> None:
+        super().__init__(
+            f"The length of replication password should be lower than 32"
+        )
+

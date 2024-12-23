@@ -852,6 +852,12 @@ innodb_page_size = 16k
 """
 Variable innodb_page_size must be the same in src and repl. src_value=8192, repl_value=16384
 """
+    And cluster status must be
+    """
+    source=cloning
+    replica=down
+
+    """
 
   Scenario: test migration to cluster with wrong config (max_allowed_packet lower than 2M)
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
@@ -904,6 +910,12 @@ max_allowed_packet = 1M
 """
 Variable max_allowed_packet has wrong value. value = 1048576
 """
+    And cluster status must be
+    """
+    source=cloning
+    replica=down
+
+    """
   Scenario: test migration to cluster with wrong version (80.35 to 8.0.36)
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
@@ -955,3 +967,32 @@ max_allowed_packet = 1M
 """
 Src and remote are in different series. src_version=8.0.35, remote_version=8.0.36
 """
+    And cluster status must be
+    """
+    source=cloning
+    replica=down
+
+    """
+
+  Scenario: test migration to cluster with wong lenght password(33 characters)
+    Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
+    And setup user root with password: password for etcd
+    And setup user mm for etcd with password: password access to path mm/cluster1/
+    And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And setup default mysql with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And execute mysql query with user: root, password: root, host: remote and port: 3306 query: alter user 'root' identified by 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    And execute mysql query with user: root, password: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
+    And setup mysql_manager with remote(remote, root, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And init mysql cluster spec standby of remote mysql
+    And sleep 20 seconds
+    Then logs of mm must contain
+"""
+The length of replication password should be lower than 32
+"""
+
+    And cluster status must be
+    """
+    source=cloning
+    replica=down
+
+    """

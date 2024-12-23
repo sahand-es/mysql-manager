@@ -1,5 +1,5 @@
 import logging
-from mysql_manager.exceptions import CloneException, PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndRemoteAreInDifferentSeries, WrongMysqlVariableValue
+from mysql_manager.exceptions import RemoteUserReplicationPasswordExceedsMaxLength, CloneException, PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndRemoteAreInDifferentSeries, WrongMysqlVariableValue
 from mysql_manager.exceptions import VariableIsNotSetInDatabase
 from mysql_manager.instance import Mysql
 from mysql_manager.enums import PluginStatus
@@ -102,9 +102,13 @@ class CloneCompatibilityChecker:
                 variable_name="max_allowed_packet",
                 variable_value=remote_max_allowed_packet,
             )
+    def check_password_length(self):
+        if len(self.remote.password) > 32:
+            raise RemoteUserReplicationPasswordExceedsMaxLength()
 
     def is_clone_possible(self) -> bool:
         try:
+            self.check_password_length()
             self.check_is_same_series()
             self.check_max_allowed_packet()
             self.check_required_plugins_on_src()

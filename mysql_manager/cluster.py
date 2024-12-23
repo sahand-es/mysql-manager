@@ -292,6 +292,7 @@ class ClusterManager:
         while True:
             if not CloneCompatibilityChecker(src=self.src, remote=self.remote).is_clone_possible():
                 time.sleep(CLONE_COMPATIBILITY_CHECK_INTERVAL_SECONDS)
+                continue
             try:
                 self._log("Cloning remote server")
                 self.src.run_command(

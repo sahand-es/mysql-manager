@@ -1,4 +1,3 @@
-#TODO: Merge all exception in one package
 class CloneException(Exception):
     pass
 
@@ -29,3 +28,4 @@ class CloneIsNotPossible(CloneException):
         super().__init__(
             f"Clone is not possible"
         )
+

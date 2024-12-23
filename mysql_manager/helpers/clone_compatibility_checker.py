@@ -1,5 +1,5 @@
 import logging
-from mysql_manager.clone_exceptions import CloneException, PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndRemoteAreInDifferentSeries, WrongMysqlVariableValue
+from mysql_manager.exceptions import CloneException, PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndRemoteAreInDifferentSeries, WrongMysqlVariableValue
 from mysql_manager.exceptions import VariableIsNotSetInDatabase
 from mysql_manager.instance import Mysql
 from mysql_manager.enums import PluginStatus

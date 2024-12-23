@@ -18,10 +18,10 @@ class DifferentMysqlVariable(CloneException):
             f"Variable {variable_name} must be the same in src and repl. src_value={src_value}, repl_value={repl_value}"
         )
 
-class SourceAndReplAreInDifferentSeries(CloneException):
-    def __init__(self, src_version: str, repl_version: str) -> None:
+class SourceAndRemoteAreInDifferentSeries(CloneException):
+    def __init__(self, src_version: str, remote_version: str) -> None:
         super().__init__(
-            f"Src and repl are in different series. src_version={src_version}, repl_version={repl_version}"
+            f"Src and remote are in different series. src_version={src_version}, remote_version={remote_version}"
         )
 
 class CloneIsNotPossible(CloneException):

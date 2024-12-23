@@ -1,5 +1,5 @@
 import logging
-from mysql_manager.clone_exceptions import CloneException, PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndReplAreInDifferentSeries, WrongMysqlVariableValue
+from mysql_manager.clone_exceptions import CloneException, PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndRemoteAreInDifferentSeries, WrongMysqlVariableValue
 from mysql_manager.exceptions import VariableIsNotSetInDatabase
 from mysql_manager.instance import Mysql
 from mysql_manager.enums import PluginStatus
@@ -20,21 +20,41 @@ class CloneCompatibilityChecker:
         self.remote = remote
 
     @staticmethod
-    def is_same_series(version1: str, version2: str) -> bool:
+    def are_versions_compatible(src_version: str, remote_version: str) -> bool:
         """
-        Check if two MySQL version strings are in the same series.
+        Check if two MySQL version strings are compatible.
+
+        This function checks if the source and destination MySQL versions are compatible.
+        For versions before 8.0.37, the source and destination versions must be exactly the same.
+        For versions 8.0.37 and later, only the major and minor version numbers need to match.
 
         Args:
-            version1 (str): The first version string (e.g., "8.4.0").
-            version2 (str): The second version string (e.g., "8.4.11").
+            src_version (str): The source version string (e.g., "8.4.0").
+            dest_version (str): The destination version string (e.g., "8.4.11").
 
         Returns:
-            bool: True if the versions are in the same series, False otherwise.
-        """
-        # Split the version strings into major, minor, and patch components
-        major1, minor1, _ = version1.split('.')
-        major2, minor2, _ = version2.split('.')
+            bool: True if the versions are compatible, False otherwise.
 
+        Notes:
+            Before version 8.0.37, the MySQL clone plugin requires that the source and destination versions
+            must be the same. For more information, see:
+            https://dev.mysql.com/doc/refman/8.0/en/clone-plugin-remote.html
+
+        Example:
+            >>> are_versions_compatible("8.4.0", "8.4.11")
+            True
+            >>> are_versions_compatible("8.4.0", "8.5.11")
+            False
+            >>> are_versions_compatible("8.0.35", "8.0.35")
+            True
+            >>> are_versions_compatible("8.0.35", "8.0.36")
+            False
+        """       # Split the version strings into major, minor, and patch components
+        major1, minor1, patch1 = map(int, src_version.split('.'))
+        major2, minor2, patch2 = map(int, remote_version.split('.'))
+        if (major1, minor1, patch1) < (8, 0, 37) or (major2, minor2, patch2) < (8, 0, 37):
+            # Before 8.0.37, src and dest version should be the same
+            return (major1, minor1, patch1) == (major2, minor2, patch2)
         # Compare the major and minor components
         return major1 == major2 and minor1 == minor2
 
@@ -63,10 +83,10 @@ class CloneCompatibilityChecker:
     def check_is_same_series(self):
         src_version = self.src.get_variable("version")
         remote_version = self.remote.get_variable("version")
-        if not self.is_same_series(src_version, remote_version):
-            raise SourceAndReplAreInDifferentSeries(
+        if not self.are_versions_compatible(src_version, remote_version):
+            raise SourceAndRemoteAreInDifferentSeries(
                 src_version=src_version,
-                repl_version=remote_version
+                remote_version=remote_version
             )
 
     def check_max_allowed_packet(self):

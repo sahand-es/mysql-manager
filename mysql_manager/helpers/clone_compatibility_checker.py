@@ -1,6 +1,4 @@
 import logging
-from mysql_manager.exceptions import RemoteUserReplicationPasswordExceedsMaxLength, CloneException, PluginsAreNotInstalled, DifferentMysqlVariable, SourceAndRemoteAreInDifferentSeries, WrongMysqlVariableValue
-from mysql_manager.exceptions import VariableIsNotSetInDatabase
 from mysql_manager.instance import Mysql
 from mysql_manager.enums import PluginStatus
 
@@ -58,62 +56,69 @@ class CloneCompatibilityChecker:
         # Compare the major and minor components
         return major1 == major2 and minor1 == minor2
 
-    def check_required_plugins_on_src(self):
+    def are_required_plugins_installed_on_src(self) -> bool:
         src_active_plugins = self.src.get_plugins(status=PluginStatus.ACTIVE.value)
         remote_active_plugins = self.remote.get_plugins(status=PluginStatus.ACTIVE.value)
         required_plugins_on_src = remote_active_plugins - src_active_plugins
         if required_plugins_on_src:
-            raise PluginsAreNotInstalled(
-                plugin_names=[
-                    plugin.name for plugin in required_plugins_on_src
-                ]
-            )
+            required_plugin_names=[
+                plugin.name for plugin in required_plugins_on_src
+            ]
+            logger.error(f"These plugins should be installed: {required_plugin_names}")
+            return False
+        return True
 
-    def check_must_be_the_same_variables(self):
+    def are_required_variables_matching(self) -> bool:
+        """
+        Checks if the required MySQL variables are the same between the source and remote databases.
+
+        This function iterates through a predefined list of MySQL variables that must have identical
+        values in both the source and remote databases. If any variable's value does not match between
+        the two databases, it logs an error message and returns False. If all variables match, it returns True.
+
+        Returns:
+            bool: True if all required variables match between the source and remote databases, False otherwise.
+        """
         for variable in self.MUST_BE_THE_SAME_VARIABLES:
             value_in_src = self.src.get_variable(variable)
             value_in_remote = self.remote.get_variable(variable)
             if value_in_src != value_in_remote:
-                raise DifferentMysqlVariable(
-                    variable_name=variable,
-                    src_value=value_in_src,
-                    repl_value=value_in_remote
-                )
+                logger.error(f"Variable {variable} must be the same in src and remote. src_value={value_in_src}, remote_value={value_in_remote}")
+                return False
+        return True
 
-    def check_is_same_series(self):
+    def is_series_consistent(self) -> bool:
         src_version = self.src.get_variable("version")
         remote_version = self.remote.get_variable("version")
         if not self.are_versions_compatible(src_version, remote_version):
-            raise SourceAndRemoteAreInDifferentSeries(
-                src_version=src_version,
-                remote_version=remote_version
-            )
+            logger.error(f"Src and remote are in different series. src_version={src_version}, remote_version={remote_version}")
+            return False
+        return True
 
-    def check_max_allowed_packet(self):
+    def is_max_packet_size_valid(self) -> bool:
         src_max_allowed_packet = int(self.src.get_variable("max_allowed_packet"))
         remote_max_allowed_packet = int(self.remote.get_variable("max_allowed_packet"))
         if src_max_allowed_packet < self.MINIMUM_MAX_ALLOWED_PACKET:
-            raise WrongMysqlVariableValue(
-                variable_name="max_allowed_packet",
-                variable_value=src_max_allowed_packet,
-            )
+            logger.error(f"Variable max_allowed_packet has wrong value. value = {src_max_allowed_packet}")
+            return False
         if remote_max_allowed_packet < self.MINIMUM_MAX_ALLOWED_PACKET:
-            raise WrongMysqlVariableValue(
-                variable_name="max_allowed_packet",
-                variable_value=remote_max_allowed_packet,
-            )
-    def check_password_length(self):
-        if len(self.remote.password) > 32:
-            raise RemoteUserReplicationPasswordExceedsMaxLength()
-
-    def is_clone_possible(self) -> bool:
-        try:
-            self.check_password_length()
-            self.check_is_same_series()
-            self.check_max_allowed_packet()
-            self.check_required_plugins_on_src()
-            self.check_must_be_the_same_variables()
-        except (CloneException, VariableIsNotSetInDatabase) as e:
-            logger.error(str(e))
+            logger.error(f"Variable max_allowed_packet has wrong value. value = {remote_max_allowed_packet}")
             return False
         return True
+
+    def is_password_length_valid(self) -> bool:
+        if len(self.remote.password) > 32:
+            logger.error("The length of replication password should be lower than 32")
+            return False
+        return True
+
+    def is_clone_possible(self) -> bool:
+        return all(
+            (
+                self.is_password_length_valid(),
+                self.is_series_consistent(),
+                self.is_max_packet_size_valid(),
+                self.are_required_plugins_installed_on_src(),
+                self.are_required_variables_matching()
+            )
+        )

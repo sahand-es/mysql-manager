@@ -80,24 +80,24 @@ class CloneCompatibilityChecker:
             bool: True if all required variables match between the source and remote databases, False otherwise.
         """
         for variable in self.MUST_BE_THE_SAME_VARIABLES:
-            value_in_src = self.src.get_variable(variable)
-            value_in_remote = self.remote.get_variable(variable)
+            value_in_src = self.src.get_global_variable(variable)
+            value_in_remote = self.remote.get_global_variable(variable)
             if value_in_src != value_in_remote:
                 logger.error(f"Variable {variable} must be the same in src and remote. src_value={value_in_src}, remote_value={value_in_remote}")
                 return False
         return True
 
     def is_series_consistent(self) -> bool:
-        src_version = self.src.get_variable("version")
-        remote_version = self.remote.get_variable("version")
+        src_version = self.src.get_global_variable("version")
+        remote_version = self.remote.get_global_variable("version")
         if not self.are_versions_compatible(src_version, remote_version):
             logger.error(f"Src and remote are in different series. src_version={src_version}, remote_version={remote_version}")
             return False
         return True
 
     def is_max_packet_size_valid(self) -> bool:
-        src_max_allowed_packet = int(self.src.get_variable("max_allowed_packet"))
-        remote_max_allowed_packet = int(self.remote.get_variable("max_allowed_packet"))
+        src_max_allowed_packet = int(self.src.get_global_variable("max_allowed_packet"))
+        remote_max_allowed_packet = int(self.remote.get_global_variable("max_allowed_packet"))
         if src_max_allowed_packet < self.MINIMUM_MAX_ALLOWED_PACKET:
             logger.error(f"Variable max_allowed_packet has wrong value. value = {src_max_allowed_packet}")
             return False

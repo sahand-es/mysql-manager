@@ -254,16 +254,16 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
                     self._log(str(e)) 
                     raise e
 
-    def get_variable(
+    def get_global_variable(
         self, name: str
     ) -> str:
-        query = f"SHOW VARIABLES LIKE '{name}';"
-        variable_value_response = self.fetch(query, [])
-        if not variable_value_response:
+        query = f"select @@{name} as '{name}';"
+        variable_value = self.run_command(query).get(name)
+        if variable_value is None:
             raise VariableIsNotSetInDatabase(
                 variable_name=name
             )
-        return variable_value_response[0]["Value"]
+        return variable_value
 
     def get_plugins(
         self, name: str | None = None, status: str | None = None
@@ -298,11 +298,11 @@ select @@global.log_bin, @@global.binlog_format, @@global.gtid_mode, @@global.en
         mysql_plugins = self.fetch(query, args)
         return {
             MysqlPlugin(
-                name=_["PLUGIN_NAME"],
-                status=_["PLUGIN_STATUS"],
-                plugin_type=_["PLUGIN_TYPE"],
+                name=plugin["PLUGIN_NAME"],
+                status=plugin["PLUGIN_STATUS"],
+                plugin_type=plugin["PLUGIN_TYPE"],
             )
-            for _ in mysql_plugins
+            for plugin in mysql_plugins
         }
 
     def install_plugin(self, plugin_name: str, plugin_file: str):

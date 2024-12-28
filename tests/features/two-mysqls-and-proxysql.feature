@@ -11,7 +11,7 @@ Feature: two-mysqls-and-two-haproxies
     And setup haproxy with name hap1 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And setup haproxy with name hap2 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And init mysql cluster spec
-    And sleep 50 seconds
+    And sleep 30 seconds
     Then cluster status must be
     """
     source=up
@@ -19,7 +19,46 @@ Feature: two-mysqls-and-two-haproxies
 
     """
     When execute mysql query with user: hamadmin, password: password, host: hap2 and port: 3306 query: use hamdb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (1, 'Luis');
-    
+    Then result of query: "select @@global.server_id;" with user: hamadmin and password: password on host: hap1 and port: 3306 should be
+    """
+    <?xml version="1.0"?>
+
+    <resultset statement="select @@global.server_id" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <row>
+	    <field name="@@global.server_id">1</field>
+      </row>
+    </resultset>
+    """
+    Then result of query: "select @@global.server_id;" with user: hamadmin and password: password on host: hap2 and port: 3306 should be
+    """
+    <?xml version="1.0"?>
+
+    <resultset statement="select @@global.server_id" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <row>
+	    <field name="@@global.server_id">1</field>
+      </row>
+    </resultset>
+    """
+    Then result of query: "select @@global.server_id;" with user: hamadmin and password: password on host: hap1 and port: 3307 should be
+    """
+    <?xml version="1.0"?>
+
+    <resultset statement="select @@global.server_id" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <row>
+	    <field name="@@global.server_id">2</field>
+      </row>
+    </resultset>
+    """
+    Then result of query: "select @@global.server_id;" with user: hamadmin and password: password on host: hap2 and port: 3307 should be
+    """
+    <?xml version="1.0"?>
+
+    <resultset statement="select @@global.server_id" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <row>
+	    <field name="@@global.server_id">2</field>
+      </row>
+    </resultset>
+    """
     Then result of query: "select * from hamdb.t1;" with user: hamadmin and password: password on host: hap1 and port: 3306 should be
     """
     <?xml version="1.0"?>

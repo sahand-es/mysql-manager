@@ -10,7 +10,7 @@ Feature: one-mysql-and-two-haproxies
     And setup haproxy with name hap1 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And setup haproxy with name hap2 with env ETCD_HOST=http://etcd:2379 ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And init mysql cluster spec
-    And sleep 30 seconds
+    And sleep 15 seconds
     Then cluster status must be
     """
     source=up
@@ -29,7 +29,26 @@ Feature: one-mysql-and-two-haproxies
       </row>
     </resultset>
     """
+    Then result of query: "select @@global.server_id;" with user: hamadmin and password: password on host: hap1 and port: 3306 should be
+    """
+    <?xml version="1.0"?>
 
+    <resultset statement="select @@global.server_id" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <row>
+	    <field name="@@global.server_id">1</field>
+      </row>
+    </resultset>
+    """
+    Then result of query: "select @@global.server_id;" with user: hamadmin and password: password on host: hap2 and port: 3306 should be
+    """
+    <?xml version="1.0"?>
+
+    <resultset statement="select @@global.server_id" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <row>
+	    <field name="@@global.server_id">1</field>
+      </row>
+    </resultset>
+    """
     Then result of query: "select * from hamdb.t1;" with user: hamadmin and password: password on host: hap2 and port: 3306 should be
     """
     <?xml version="1.0"?>

@@ -850,7 +850,7 @@ innodb_page_size = 16k
     And sleep 20 seconds
     Then logs of mm must contain
 """
-Variable innodb_page_size must be the same in src and repl. src_value=8192, repl_value=16384
+Variable innodb_page_size must be the same in src and remote. src_value=8192, remote_value=16384
 """
     And cluster status must be
     """
@@ -898,7 +898,6 @@ slow_query_log = 1
 long_query_time = 1
 slow_query_log_file = /var/lib/mysql/slow.log
 max_connections = 1000
-max_allowed_packet = 1M
 """
 
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
@@ -908,7 +907,7 @@ max_allowed_packet = 1M
     And sleep 20 seconds
     Then logs of mm must contain
 """
-Variable max_allowed_packet has wrong value. value = 1048576
+Variable max_allowed_packet has wrong value in source database. It should be more than 2097152 bytes, while current value is 1048576 bytes
 """
     And cluster status must be
     """
@@ -987,7 +986,7 @@ Src and remote are in different series. src_version=8.0.35, remote_version=8.0.3
     And sleep 20 seconds
     Then logs of mm must contain
 """
-The length of replication password should be lower than 32
+The length of replication password should be less than 32
 """
 
     And cluster status must be

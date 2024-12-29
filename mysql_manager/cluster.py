@@ -291,7 +291,7 @@ class ClusterManager:
         ## we do not proceed until clone is successful
         while True:
             if not CloneCompatibilityChecker(src=self.src, remote=self.remote).is_clone_possible():
-                self._log(f"Cloning is not possible, wait for {CLONE_COMPATIBILITY_CHECK_INTERVAL_SECONDS} seconds")
+                self._log(f"Cloning is not possible, waiting for {CLONE_COMPATIBILITY_CHECK_INTERVAL_SECONDS} seconds")
                 time.sleep(CLONE_COMPATIBILITY_CHECK_INTERVAL_SECONDS)
                 continue
             try:

@@ -99,16 +99,16 @@ class CloneCompatibilityChecker:
         src_max_allowed_packet = int(self.src.get_global_variable("max_allowed_packet"))
         remote_max_allowed_packet = int(self.remote.get_global_variable("max_allowed_packet"))
         if src_max_allowed_packet < self.MINIMUM_MAX_ALLOWED_PACKET:
-            logger.error(f"Variable max_allowed_packet has wrong value. value = {src_max_allowed_packet}")
+            logger.error(f"Variable max_allowed_packet has wrong value in source database. It should be more than {self.MINIMUM_MAX_ALLOWED_PACKET} bytes, while current value is {src_max_allowed_packet} bytes")
             return False
         if remote_max_allowed_packet < self.MINIMUM_MAX_ALLOWED_PACKET:
-            logger.error(f"Variable max_allowed_packet has wrong value. value = {remote_max_allowed_packet}")
+            logger.error(f"Variable max_allowed_packet has wrong value in remote database. It should be more than {self.MINIMUM_MAX_ALLOWED_PACKET} bytes, while current value is {remote_max_allowed_packet} bytes")
             return False
         return True
 
     def is_password_length_valid(self) -> bool:
         if len(self.remote.password) > 32:
-            logger.error("The length of replication password should be lower than 32")
+            logger.error("The length of replication password should be less than 32")
             return False
         return True
 

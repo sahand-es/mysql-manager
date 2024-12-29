@@ -7,7 +7,7 @@ for more details.
 ## Features
 - MySQL asynchronous replication 
 - Automatic failover in case of source (primary) failure
-- ProxySQL as a proxy
+- [Proxy](https://github.com/hamravesh/mysql-manager-haproxy) based on [HAProxy](https://www.haproxy.org/) with both write and readonly ports
 - High availability using [etcd](https://etcd.io/)
 - Supports migration from other MySQL servers using [CLONE](https://dev.mysql.com/doc/refman/8.0/en/clone-plugin.html) plugin
 - Prometheus metrics for observability

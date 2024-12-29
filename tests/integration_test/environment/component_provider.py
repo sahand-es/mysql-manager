@@ -42,6 +42,10 @@ class ComponentProvider:
     def exec(self, command):
         return self.component.exec(command)
 
+    def logs(self,):
+        # This function returns std_err and std_out errors at the same time
+        return self.component.get_logs()[0].decode() + self.component.get_logs()[1].decode()
+
     def set_env(self, envs: dict):
         for key, value in envs.items():
             self.component.with_env(key, value) 

@@ -38,4 +38,12 @@ class MysqlClusterState(Enum):
 class MysqlRoles(Enum):
     SOURCE = "source"
     REPLICA = "replica"
-    READONLY_REPLICA = "readonly_replica" 
+    READONLY_REPLICA = "readonly_replica"
+
+class PluginStatus(Enum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    DISABLED = "DISABLED"
+    DELETING = "DELETING"
+    DELETED = "DELETED"
+

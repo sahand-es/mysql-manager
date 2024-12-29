@@ -35,3 +35,10 @@ class MysqlNodeAlreadyExists(Exception):
 class SourceDatabaseCannotBeDeleted(Exception):
     def __init__(self) -> None:
         super().__init__("Could not remove master database")
+
+class VariableIsNotSetInDatabase(Exception):
+    def __init__(self, variable_name: str) -> None:
+        super().__init__(
+            f"Variable {variable_name} is not set in database"
+        )
+

@@ -66,16 +66,18 @@ max_connections = 1000
             if mysql.is_up:
                 return mysql
 
-    def setup_mysql(self, mysql: dict): 
-        self.setup_mysql_with_name(mysql, f"mysql-s{mysql['server_id']}")
+    def setup_mysql(self, mysql: dict, config: str | None = None):
+        self.setup_mysql_with_name(mysql, f"mysql-s{mysql['server_id']}", config)
 
-    def setup_mysql_with_name(self, mysql, name: str):
+    def setup_mysql_with_name(self, mysql, name: str, config: str | None = None):
+        if config is None:
+            config = self._get_default_mysql_config_template().format(mysql["server_id"])
         component = MysqlContainerProvider(
             server_id=mysql["server_id"],
             name=name,
             network=self.network,
             image=mysql["image"],
-            config=self._get_default_mysql_config_template().format(mysql["server_id"])
+            config=config
         )
         if name == "remote":
             self.remote = component

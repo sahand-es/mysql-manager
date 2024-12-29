@@ -833,7 +833,7 @@ Feature: test migrate remote
     And sleep 20 seconds
     Then logs of mm must contain
     """
-    Variable innodb_page_size must be the same in src and remote. src_value=8192, remote_value=16384
+    Variable innodb_page_size must be the same in source and remote. Source value = 8192, remote value = 16384
     """
     And cluster status must be
     """
@@ -856,7 +856,6 @@ Feature: test migrate remote
     log-bin = binlog
     relay-log = relaylog
     datadir = /var/lib/mysql
-    max_allowed_packet = 1M
     """
     And setup default mysql with config with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
     """
@@ -876,7 +875,7 @@ Feature: test migrate remote
     And sleep 20 seconds
     Then logs of mm must contain
     """
-    Variable max_allowed_packet has wrong value. value = 1048576
+    Variable max_allowed_packet has wrong value in remote database. It should be more than 2097152 bytes, while current value is 1048576 bytes
     """
     And cluster status must be
     """
@@ -919,7 +918,7 @@ Feature: test migrate remote
     And sleep 20 seconds
     Then logs of mm must contain
     """
-    Src and remote are in different series. src_version=8.0.35, remote_version=8.0.36
+    Source and remote are in different series. Source version = 8.0.35, remote version = 8.0.36
     """
     And cluster status must be
     """
@@ -942,7 +941,7 @@ Feature: test migrate remote
     And sleep 20 seconds
     Then logs of mm must contain
     """
-    The length of replication password should be lower than 32
+    The length of replication password should be less than 32
     """
     And cluster status must be
     """

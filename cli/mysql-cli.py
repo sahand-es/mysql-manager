@@ -83,7 +83,7 @@ def set_fail_interval(fail_interval):
     try:
         cluster_data_handler.set_fail_interval(fail_interval)
     except FailIntervalLowerThanMinimumError:
-        print(f"fail_interval could not be lower that {MINIMUM_FAIL_INTERVAL}")
+        print(f"The value of fail_interval could not be less than {MINIMUM_FAIL_INTERVAL}")
 
 @cli.command()
 @click.option('-h', '--host', help='MySQL host', required=True)

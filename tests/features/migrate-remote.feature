@@ -1,6 +1,5 @@
 Feature: test migrate remote
   setup cluster nodes, setup another mysql, add data to it, migrate its data to mysql manager cluster and promote cluster 
-## TODO: migrate from wrong server (version, config, etc.)
   Scenario: test migration to cluster with two servers and promotion
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
@@ -801,57 +800,41 @@ Feature: test migrate remote
     # """
     # """
 
+
   Scenario: test migration to cluster with wrong config (different innodb_page_size)
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
     And setup mysql with config with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-"""
-[mysqld]
-server-id = 1
-gtid-mode = ON
-enforce-gtid-consistency = ON
-log-bin = binlog
-relay-log = relaylog
-datadir = /var/lib/mysql
-binlog_expire_logs_seconds = 259200
-binlog_expire_logs_auto_purge = ON
-max_binlog_size = 104857600
-slow_query_log = 1
-long_query_time = 1
-slow_query_log_file = /var/lib/mysql/slow.log
-max_connections = 1000
-innodb_page_size = 8k
-"""
-
+    """
+    [mysqld]
+    server-id = 1
+    gtid-mode = ON
+    enforce-gtid-consistency = ON
+    log-bin = binlog
+    relay-log = relaylog
+    datadir = /var/lib/mysql
+    innodb_page_size = 8k
+    """
     And setup default mysql with config with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-"""
-[mysqld]
-server-id = 3
-gtid-mode = ON
-enforce-gtid-consistency = ON
-log-bin = binlog
-relay-log = relaylog
-datadir = /var/lib/mysql
-binlog_expire_logs_seconds = 259200
-binlog_expire_logs_auto_purge = ON
-max_binlog_size = 104857600
-slow_query_log = 1
-long_query_time = 1
-slow_query_log_file = /var/lib/mysql/slow.log
-max_connections = 1000
-innodb_page_size = 16k
-"""
-
-    And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
+    """
+    [mysqld]
+    server-id = 3
+    gtid-mode = ON
+    enforce-gtid-consistency = ON
+    log-bin = binlog
+    relay-log = relaylog
+    datadir = /var/lib/mysql
+    innodb_page_size = 16k
+    """
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
     And setup mysql_manager with remote(remote, root, root, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And init mysql cluster spec standby of remote mysql
     And sleep 20 seconds
     Then logs of mm must contain
-"""
-Variable innodb_page_size must be the same in src and repl. src_value=8192, repl_value=16384
-"""
+    """
+    Variable innodb_page_size must be the same in src and remote. src_value=8192, remote_value=16384
+    """
     And cluster status must be
     """
     source=cloning
@@ -859,114 +842,85 @@ Variable innodb_page_size must be the same in src and repl. src_value=8192, repl
 
     """
 
-  Scenario: test migration to cluster with wrong config (max_allowed_packet lower than 2M)
+
+  Scenario: test migration to cluster with wrong config (max_allowed_packet less than 2M)
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
     And setup mysql with config with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-"""
-[mysqld]
-server-id = 1
-gtid-mode = ON
-enforce-gtid-consistency = ON
-log-bin = binlog
-relay-log = relaylog
-datadir = /var/lib/mysql
-binlog_expire_logs_seconds = 259200
-binlog_expire_logs_auto_purge = ON
-max_binlog_size = 104857600
-slow_query_log = 1
-long_query_time = 1
-slow_query_log_file = /var/lib/mysql/slow.log
-max_connections = 1000
-max_allowed_packet = 1M
-"""
-
+    """
+    [mysqld]
+    server-id = 1
+    gtid-mode = ON
+    enforce-gtid-consistency = ON
+    log-bin = binlog
+    relay-log = relaylog
+    datadir = /var/lib/mysql
+    max_allowed_packet = 1M
+    """
     And setup default mysql with config with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-"""
-[mysqld]
-server-id = 3
-gtid-mode = ON
-enforce-gtid-consistency = ON
-log-bin = binlog
-relay-log = relaylog
-datadir = /var/lib/mysql
-binlog_expire_logs_seconds = 259200
-binlog_expire_logs_auto_purge = ON
-max_binlog_size = 104857600
-slow_query_log = 1
-long_query_time = 1
-slow_query_log_file = /var/lib/mysql/slow.log
-max_connections = 1000
-max_allowed_packet = 1M
-"""
-
+    """
+    [mysqld]
+    server-id = 3
+    gtid-mode = ON
+    enforce-gtid-consistency = ON
+    log-bin = binlog
+    relay-log = relaylog
+    datadir = /var/lib/mysql
+    max_allowed_packet = 1M
+    """
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
     And setup mysql_manager with remote(remote, root, root, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And init mysql cluster spec standby of remote mysql
     And sleep 20 seconds
     Then logs of mm must contain
-"""
-Variable max_allowed_packet has wrong value. value = 1048576
-"""
+    """
+    Variable max_allowed_packet has wrong value. value = 1048576
+    """
     And cluster status must be
     """
     source=cloning
     replica=down
 
     """
-  Scenario: test migration to cluster with wrong version (80.35 to 8.0.36)
+  
+  
+  Scenario: test migration to cluster with wrong version (8.0.35 to 8.0.36)
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
     And setup mysql with config with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-"""
-[mysqld]
-server-id = 1
-gtid-mode = ON
-enforce-gtid-consistency = ON
-log-bin = binlog
-relay-log = relaylog
-datadir = /var/lib/mysql
-binlog_expire_logs_seconds = 259200
-binlog_expire_logs_auto_purge = ON
-max_binlog_size = 104857600
-slow_query_log = 1
-long_query_time = 1
-slow_query_log_file = /var/lib/mysql/slow.log
-max_connections = 1000
-max_allowed_packet = 1M
-"""
-
+    """
+    [mysqld]
+    server-id = 1
+    gtid-mode = ON
+    enforce-gtid-consistency = ON
+    log-bin = binlog
+    relay-log = relaylog
+    datadir = /var/lib/mysql
+    max_allowed_packet = 1M
+    """
     And setup default mysql with config with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.36-bullseye
-"""
-[mysqld]
-server-id = 3
-gtid-mode = ON
-enforce-gtid-consistency = ON
-log-bin = binlog
-relay-log = relaylog
-datadir = /var/lib/mysql
-binlog_expire_logs_seconds = 259200
-binlog_expire_logs_auto_purge = ON
-max_binlog_size = 104857600
-slow_query_log = 1
-long_query_time = 1
-slow_query_log_file = /var/lib/mysql/slow.log
-max_connections = 1000
-max_allowed_packet = 1M
-"""
-
+    """
+    [mysqld]
+    server-id = 3
+    gtid-mode = ON
+    enforce-gtid-consistency = ON
+    log-bin = binlog
+    relay-log = relaylog
+    datadir = /var/lib/mysql
+    max_allowed_packet = 1M
+    """
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
     And setup mysql_manager with remote(remote, root, root, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
     And init mysql cluster spec standby of remote mysql
     And sleep 20 seconds
     Then logs of mm must contain
-"""
-Src and remote are in different series. src_version=8.0.35, remote_version=8.0.36
-"""
+    """
+    Src and remote are in different series. src_version=8.0.35, remote_version=8.0.36
+    """
     And cluster status must be
     """
     source=cloning
@@ -974,7 +928,8 @@ Src and remote are in different series. src_version=8.0.35, remote_version=8.0.3
 
     """
 
-  Scenario: test migration to cluster with wong lenght password(33 characters)
+
+  Scenario: test migration to cluster with wrong password length (33 characters)
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
@@ -986,10 +941,9 @@ Src and remote are in different series. src_version=8.0.35, remote_version=8.0.3
     And init mysql cluster spec standby of remote mysql
     And sleep 20 seconds
     Then logs of mm must contain
-"""
-The length of replication password should be lower than 32
-"""
-
+    """
+    The length of replication password should be lower than 32
+    """
     And cluster status must be
     """
     source=cloning

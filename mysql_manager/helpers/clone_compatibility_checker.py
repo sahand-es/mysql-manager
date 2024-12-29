@@ -1,6 +1,8 @@
 import logging
+import datetime
 from mysql_manager.instance import Mysql
 from mysql_manager.enums import PluginStatus
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,9 @@ class CloneCompatibilityChecker:
     def __init__(self, src: Mysql, remote: Mysql) -> None:
         self.src = src
         self.remote = remote
+
+    def _log(self, msg) -> None:
+        print(str(datetime.datetime.now()) + "  " + msg)
 
     @staticmethod
     def are_versions_compatible(src_version: str, remote_version: str) -> bool:
@@ -64,7 +69,7 @@ class CloneCompatibilityChecker:
             required_plugin_names=[
                 plugin.name for plugin in required_plugins_on_src
             ]
-            logger.error(f"These plugins should be installed: {required_plugin_names}")
+            self._log(f"These plugins should be installed: {required_plugin_names}")
             return False
         return True
 
@@ -83,7 +88,7 @@ class CloneCompatibilityChecker:
             value_in_src = self.src.get_global_variable(variable)
             value_in_remote = self.remote.get_global_variable(variable)
             if value_in_src != value_in_remote:
-                logger.error(f"Variable {variable} must be the same in src and remote. src_value={value_in_src}, remote_value={value_in_remote}")
+                self._log(f"Variable {variable} must be the same in source and remote. Source value = {value_in_src}, remote value = {value_in_remote}")
                 return False
         return True
 
@@ -91,7 +96,7 @@ class CloneCompatibilityChecker:
         src_version = self.src.get_global_variable("version")
         remote_version = self.remote.get_global_variable("version")
         if not self.are_versions_compatible(src_version, remote_version):
-            logger.error(f"Src and remote are in different series. src_version={src_version}, remote_version={remote_version}")
+            self._log(f"Source and remote are in different series. Source version = {src_version}, remote version = {remote_version}")
             return False
         return True
 
@@ -99,16 +104,16 @@ class CloneCompatibilityChecker:
         src_max_allowed_packet = int(self.src.get_global_variable("max_allowed_packet"))
         remote_max_allowed_packet = int(self.remote.get_global_variable("max_allowed_packet"))
         if src_max_allowed_packet < self.MINIMUM_MAX_ALLOWED_PACKET:
-            logger.error(f"Variable max_allowed_packet has wrong value in source database. It should be more than {self.MINIMUM_MAX_ALLOWED_PACKET} bytes, while current value is {src_max_allowed_packet} bytes")
+            self._log(f"Variable max_allowed_packet has wrong value in source database. It should be more than {self.MINIMUM_MAX_ALLOWED_PACKET} bytes, while current value is {src_max_allowed_packet} bytes.")
             return False
         if remote_max_allowed_packet < self.MINIMUM_MAX_ALLOWED_PACKET:
-            logger.error(f"Variable max_allowed_packet has wrong value in remote database. It should be more than {self.MINIMUM_MAX_ALLOWED_PACKET} bytes, while current value is {remote_max_allowed_packet} bytes")
+            self._log(f"Variable max_allowed_packet has wrong value in remote database. It should be more than {self.MINIMUM_MAX_ALLOWED_PACKET} bytes, while current value is {remote_max_allowed_packet} bytes.")
             return False
         return True
 
     def is_password_length_valid(self) -> bool:
         if len(self.remote.password) > 32:
-            logger.error("The length of replication password should be less than 32")
+            self._log("The length of replication password should be less than 32")
             return False
         return True
 

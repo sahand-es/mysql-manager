@@ -13,7 +13,7 @@ from mysql_manager.constants import (
     CLUSTER_STATE_FILE_PATH,
     MINIMUM_FAIL_INTERVAL
 )
-from mysql_manager.exceptions.exceptions import FailIntervalLowerThanMinimumError
+from mysql_manager.exceptions.exceptions import FailIntervalLessThanMinimumError
 from mysql_manager.instance import Mysql
 from mysql_manager.cluster_data_handler import ClusterDataHandler
 from mysql_manager.proxysql import ProxySQL
@@ -82,7 +82,7 @@ def init(file, spec, standby: bool):
 def set_fail_interval(fail_interval):
     try:
         cluster_data_handler.set_fail_interval(fail_interval)
-    except FailIntervalLowerThanMinimumError:
+    except FailIntervalLessThanMinimumError:
         print(f"The value of fail_interval could not be less than {MINIMUM_FAIL_INTERVAL}")
 
 @cli.command()

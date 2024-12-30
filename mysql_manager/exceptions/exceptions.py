@@ -45,8 +45,8 @@ class VariableIsNotSetInDatabase(Exception):
             f"Variable {variable_name} is not set in database"
         )
 
-class FailIntervalLowerThanMinimumError(Exception):
+class FailIntervalLessThanMinimumError(Exception):
     def __init__(self) -> None:
         super().__init__(
-            f"fail_interval could not be lower that {MINIMUM_FAIL_INTERVAL}"
+            f"Variable fail_interval could not be less than {MINIMUM_FAIL_INTERVAL}"
         )

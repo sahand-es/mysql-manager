@@ -348,3 +348,12 @@ Feature: test failover
     replica=down
 
     """
+    Given start mysql with server_id 1
+    And restart mysql manager with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
+    And sleep 30 seconds
+    Then cluster status must be
+    """
+    source=up
+    replica=up
+
+    """

@@ -163,7 +163,7 @@ Feature: test failover
     """
     
     Given start mysql with server_id 1
-    Given sleep 20 seconds
+    Given sleep 30 seconds
     Then cluster status must be
     """
     source=up

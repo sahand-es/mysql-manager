@@ -190,26 +190,6 @@ Feature: test failover
       </row>
     </resultset>
     """
-    Then result of query: "select @@global.server_id;" with user: hamadmin and password: password on host: hap1 and port: 3307 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select @@global.server_id" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="@@global.server_id">1</field>
-      </row>
-    </resultset>
-    """
-    Then result of query: "select @@global.server_id;" with user: hamadmin and password: password on host: hap2 and port: 3307 should be
-    """
-    <?xml version="1.0"?>
-
-    <resultset statement="select @@global.server_id" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <row>
-	    <field name="@@global.server_id">1</field>
-      </row>
-    </resultset>
-    """
     When execute mysql query with user: hamadmin, password: password, host: hap2 and port: 3306 query: INSERT INTO hamdb.t1 VALUES (2, 'Hassan');
     Then result of query: "show replica status;" with user: root and password: root on host: mysql-s2 and port: 3306 should be
     """

@@ -8,7 +8,13 @@ from mysql_manager.enums import MysqlRoles
 from mysql_manager.etcd import EtcdClient
 from dataclasses import asdict
 
-from mysql_manager.exceptions import FailIntervalLessThanMinimumError, MysqlNodeAlreadyExists, MysqlNodeDoesNotExist, SourceDatabaseCannotBeDeleted
+from mysql_manager.exceptions import (
+    FailIntervalLessThanMinimumError, 
+    MysqlNodeAlreadyExists, 
+    MysqlNodeDoesNotExist, 
+    SourceDatabaseCannotBeDeleted,
+)
+
 from mysql_manager.constants import *
 
 

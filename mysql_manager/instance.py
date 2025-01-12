@@ -69,8 +69,8 @@ class Mysql(BaseServer):
         with db: 
             with db.cursor() as cursor:
                 try: 
-                    cursor.execute(f"ALTER USER '{user}'@'%' IDENTIFIED BY '{password}'")
-                    cursor.execute(f"ALTER USER '{user}'@'localhost' IDENTIFIED BY '{password}'")
+                    cursor.execute(f"ALTER USER IF EXISTS '{user}'@'%' IDENTIFIED BY '{password}'")
+                    cursor.execute(f"ALTER USER IF EXISTS '{user}'@'localhost' IDENTIFIED BY '{password}'")
                     cursor.execute("FLUSH PRIVILEGES")
                 except Exception as e: 
                     self._log(str(e))

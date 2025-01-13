@@ -13,7 +13,7 @@ for more details.
 - Prometheus metrics for observability
 
 ## Getting started
-To get started with MySQL Manager read [getting started doc](./docs/getting-started.md). 
+To get started with MySQL Manager read [getting started doc](./docs/getting-started.md). If you want to migrate from other MySQL servers please read [migration doc](./docs/migration.md)
 
 ## Contributing and development 
 Please follow [contributing doc](./docs/contributing.md) to set up your local development 

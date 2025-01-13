@@ -1,0 +1,21 @@
+mysqls:
+  s1:
+    host: mysql-s1
+    user: root
+    password: root
+  s2:
+    host: mysql-s2
+    user: root
+    password: root
+remote:
+  host: <remote-server-address>
+  user: <remote-server-user>
+  password: <remote-server-password>
+  port: <remote-server-port>
+users: 
+  replPassword: password
+  exporterPassword: exporter
+  nonprivPassword: password
+  nonprivUser: hamadmin
+  proxysqlMonPassword: password
+

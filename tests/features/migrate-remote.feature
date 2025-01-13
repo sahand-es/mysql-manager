@@ -4,9 +4,9 @@ Feature: test migrate remote
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
-    And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-    And setup default mysql with server_id 2 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-    And setup default mysql with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And setup default mysql with server_id 1
+    And setup default mysql with server_id 2
+    And setup default mysql with server_id 3 and name remote
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
     And setup mysql_manager with remote(remote, root, root, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
@@ -223,8 +223,8 @@ Feature: test migrate remote
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
-    And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-    And setup default mysql with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And setup default mysql with server_id 1
+    And setup default mysql with server_id 3 and name remote
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
     And setup mysql_manager with remote(remote, root, root, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/
@@ -415,8 +415,8 @@ Feature: test migrate remote
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
-    And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-    And setup default mysql with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And setup default mysql with server_id 1
+    And setup default mysql with server_id 3 and name remote
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create user 'su_remote'@'%' identified with mysql_native_password by 'su_remote_password'; grant all on *.* to 'su_remote'@'%'; flush privileges;
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
@@ -612,8 +612,8 @@ Feature: test migrate remote
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
-    And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-    And setup default mysql with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And setup default mysql with server_id 1
+    And setup default mysql with server_id 3 and name remote
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: alter user 'root'@'%' identified by 'password'; alter user 'root'@'localhost' identified by 'password'; flush privileges;
     And execute mysql query with user: root, password: password, host: remote and port: 3306 query: create database remotedb; use remotedb; CREATE TABLE t1 (c1 INT PRIMARY KEY, c2 TEXT NOT NULL);INSERT INTO t1 VALUES (120, 'Remoters');
     And execute mysql query with user: root, password: password, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
@@ -805,7 +805,7 @@ Feature: test migrate remote
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
-    And setup mysql with config with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And setup mysql with config with server_id 1
     """
     [mysqld]
     server-id = 1
@@ -816,7 +816,7 @@ Feature: test migrate remote
     datadir = /var/lib/mysql
     innodb_page_size = 8k
     """
-    And setup default mysql with config with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And setup default mysql with config with server_id 3 and name remote
     """
     [mysqld]
     server-id = 3
@@ -847,7 +847,7 @@ Feature: test migrate remote
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
-    And setup mysql with config with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And setup mysql with config with server_id 1
     """
     [mysqld]
     server-id = 1
@@ -857,7 +857,7 @@ Feature: test migrate remote
     relay-log = relaylog
     datadir = /var/lib/mysql
     """
-    And setup default mysql with config with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And setup default mysql with config with server_id 3 and name remote
     """
     [mysqld]
     server-id = 3
@@ -889,8 +889,8 @@ Feature: test migrate remote
     Given setup etcd with name etcd and image: quay.hamdocker.ir/coreos/etcd:v3.5.9-amd64
     And setup user root with password: password for etcd
     And setup user mm for etcd with password: password access to path mm/cluster1/
-    And setup default mysql with server_id 1 and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
-    And setup default mysql with server_id 3 and name remote and image: hub.hamdocker.ir/library/mysql:8.0.35-bullseye
+    And setup default mysql with server_id 1
+    And setup default mysql with server_id 3 and name remote
     And execute mysql query with user: root, password: root, host: remote and port: 3306 query: alter user 'root' identified by 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     And execute mysql query with user: root, password: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, host: remote and port: 3306 query: use mysql; INSTALL PLUGIN clone SONAME 'mysql_clone.so';
     And setup mysql_manager with remote(remote, root, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 3306) with name mm with env ETCD_HOST=etcd ETCD_USERNAME=mm ETCD_PASSWORD=password ETCD_PREFIX=mm/cluster1/

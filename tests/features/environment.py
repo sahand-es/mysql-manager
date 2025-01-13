@@ -5,6 +5,7 @@ from tests.integration_test.environment.test_environment_factory import TestEnvi
 def before_all(context):
     context.mysql_manager_image = os.getenv("MYSQL_MANAGER_IMAGE", "mysql-manager:latest")
     context.haproxy_image = os.getenv("HAPROXY_IMAGE", "mm-haproxy:latest")
+    context.mysql_image = os.getenv("MYSQL_IMAGE", "hub.hamdocker.ir/library/mysql:8.0.35-bullseye")
     if os.getenv("BUILD_IMAGE", "false") == "true":
         DockerImage(path=".", tag=context.mysql_manager_image).build()
 

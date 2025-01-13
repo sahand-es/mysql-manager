@@ -23,33 +23,33 @@ def start_default_proxysql(context, name, image):
         }
     )
 
-@given('setup default mysql with server_id {server_id:d} and name {name} and image: {image}')
-def start_mysql_with_name(context, server_id, name, image):
+@given('setup default mysql with server_id {server_id:d} and name {name}')
+def start_mysql_with_name(context, server_id, name):
     context.test_env.setup_mysql_with_name(
-        {"server_id": server_id, "image": image},
+        {"server_id": server_id, "image": context.mysql_image},
         name=name,
     )
 
-@given('setup default mysql with config with server_id {server_id:d} and name {name} and image: {image}')
-def start_mysql_with_name_and_config(context, server_id, name, image):
+@given('setup default mysql with config with server_id {server_id:d} and name {name}')
+def start_mysql_with_name_and_config(context, server_id, name):
     config = context.text
     context.test_env.setup_mysql_with_name(
-        {"server_id": server_id, "image": image},
+        {"server_id": server_id, "image": context.mysql_image},
         name=name,
         config=config
     )
 
-@given('setup default mysql with server_id {server_id:d} and image: {image}')
-def start_mysql_with_image(context, server_id, image):
+@given('setup default mysql with server_id {server_id:d}')
+def start_mysql_with_image(context, server_id):
     context.test_env.setup_mysql(
-        {"server_id": server_id, "image": image}
+        {"server_id": server_id, "image": context.mysql_image}
     )
 
-@given('setup mysql with config with server_id {server_id:d} and image: {image}')
-def start_mysql_with_config(context, server_id, image):
+@given('setup mysql with config with server_id {server_id:d}')
+def start_mysql_with_config(context, server_id):
     config = context.text
     context.test_env.setup_mysql(
-        {"server_id": server_id, "image": image}, config=config
+        {"server_id": server_id, "image": context.mysql_image}, config=config
     )
 
 @given('setup mysql_manager with name {name:w} with env ETCD_HOST={etcd_host:w} ETCD_USERNAME={etcd_username:w} ETCD_PASSWORD={etcd_password:w} ETCD_PREFIX={etcd_prefix}')

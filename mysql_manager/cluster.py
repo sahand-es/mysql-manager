@@ -86,7 +86,7 @@ class ClusterManager:
         while self.cluster_data_handler.get_cluster_state() == MysqlClusterState.STANDBY.value:
             self._log(f"Cluster is in standby mode. Remote server: {self.remote.host}")
             if self.must_replica_join_source(self.src, self.remote):
-                self.join_source_to_remote(retry=10)
+                self.join_source_to_remote(retry=1000)
             time.sleep(CLUSTER_CHECK_INTERVAL_SECONDS)
 
         if self.remote is not None: 

@@ -317,6 +317,7 @@ class ClusterManager:
         src_main_user = self.src.user
         self.src.password = self.remote.password
         self.src.user = self.remote.user
+        ## TODO: when the database is so big, it takes more than 10 retries to get ready. maybe get retry count as a config
         if not self.is_server_up(self.src, retry=retry):
             return
 

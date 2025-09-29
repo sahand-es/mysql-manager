@@ -7,6 +7,8 @@ from behave import *
 logger = logging.getLogger(__name__)
 
 @given('sleep {n:d} seconds')
+@when('sleep {n:d} seconds')
+@then('sleep {n:d} seconds')
 def sleep(context, n):
     time.sleep(n)
 
@@ -220,3 +222,57 @@ def evaluate_cluster_status(context):
 def search_for_logs_in_mm(context,):
     error_text = context.text
     assert error_text in context.test_env.mysql_manager.logs()
+
+@then('logs of mm must not contain')
+def search_for_logs_not_in_mm(context,):
+    error_text = context.text
+    logs = context.test_env.mysql_manager.logs()
+    assert error_text not in logs, f"Found unwanted text in logs: {error_text}"
+
+@when('execute password rotation command: {command}')
+def execute_password_rotation_command(context, command):
+    print(context.test_env.mysql_manager.exec(command).output.decode())
+
+
+@then('user {user} with password {password} should {ability} connect')
+@then('user {user} with password {password} should {ability} connect to {target}')
+def user_connection_test(context, user, password, ability, target="source"):
+    mysql = context.test_env.get_one_up_mysql()
+    should_connect = ability == "be able to"
+    host = "mysql-s1" if target == "source" else "mysql-s2"
+    
+    command = f"mysql -u{user} -p{password} -h {host} -P 3306 -e 'SELECT 1'"
+    result = mysql.exec(command)
+    
+    output = result.output.decode()
+    print(output)
+    
+    # Check if connection failed by looking for "Access denied" in output
+    connection_failed = "Access denied" in output
+    connection_succeeded = not connection_failed
+    
+    if should_connect:
+        if connection_succeeded:
+            print(f"User {user} connection test passed with password {password} on {target}")
+        else:
+            raise AssertionError(f"User {user} cannot connect with password {password} to {target}. Output: {output}")
+    else:
+        if connection_succeeded:
+            raise AssertionError(f"User {user} should NOT be able to connect with password {password} to {target}, but connection succeeded")
+        else:
+            print(f"User {user} correctly cannot connect with password {password} to {target}")
+
+@then('replication should be working with new replica password. check with {password} root password')
+def replication_should_be_working_with_new_replica_password(context, password):
+    mysql = context.test_env.get_one_up_mysql()
+    
+    command = f"mysql -uroot -p{password} -h mysql-s2 -P 3306 -e 'SHOW REPLICA STATUS\\G'"
+    output = mysql.exec(command).output.decode()
+    
+    print(output)
+    
+    io_running = "Replica_IO_Running: Yes" in output
+    sql_running = "Replica_SQL_Running: Yes" in output
+    
+    assert io_running, f"IO thread not running"
+    assert sql_running, f"SQL thread not running"

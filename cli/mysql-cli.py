@@ -144,5 +144,117 @@ def run():
         print("Received termination signal. Exiting...")
 
 
+
+@cli.command()
+@click.option('--repl', 'repl_pwd', help='New replication user password')
+@click.option('--exporter', 'exporter_pwd', help='New exporter user password')
+@click.option('--nonpriv', 'nonpriv_pwd', help='New non-privileged user password')
+@click.option('--root', 'root_pwd', help='New password for each MySQL node root user')
+def rotate_passwords(repl_pwd, exporter_pwd, nonpriv_pwd, root_pwd):
+    cd = cluster_data_handler.get_cluster_data()
+    src = None
+    repl_instance = None
+    for name, m in cd.mysqls.items():
+        if m.role == MysqlRoles.SOURCE.value:
+            src = Mysql(m.host, m.user, m.password, name, m.role, m.port)
+        elif m.role == MysqlRoles.REPLICA.value:
+            repl_instance = Mysql(m.host, m.user, m.password, name, m.role, m.port)
+            
+    # first check if replication is fine and can propagate password changes
+    if repl_instance:
+        repl_status = repl_instance.get_replica_status()
+        if repl_status is None:
+            print("Error: Replica is not configured for replication. Cannot safely change passwords.")
+            return
+        if repl_status.get("Replica_IO_Running") != "Yes":
+            print("Error: Replica IO thread is not running. Cannot safely change passwords.")
+            return
+        if repl_status.get("Replica_SQL_Running") != "Yes":
+            print("Error: Replica SQL thread is not running. Cannot safely change passwords.")
+            return
+        if int(repl_status.get("Seconds_Behind_Source")) >=  60:
+            print("Error: Replica is lagging behind source. Cannot safely change passwords.")
+            return
+        print("Replication is healthy. Proceeding with password change.")
+        
+
+    if repl_pwd:
+        if not _validate_password(repl_pwd, "Replication"):
+            return
+        cd.users['replPassword'] = repl_pwd
+        if src:
+            try:
+                src.change_user_password('replica', repl_pwd)
+                print(f"Changed replication user on source {src.host}")
+            except Exception as e:
+                print(f"Failed to alter replication user on source: {e}")
+        # we need to restart replication to use new password
+        if repl_instance:
+            try:
+                repl_instance.run_command("STOP REPLICA")
+                repl_instance.run_command(f"CHANGE REPLICATION SOURCE TO SOURCE_PASSWORD='{repl_pwd}'")
+                repl_instance.run_command("START REPLICA")
+                print(f"Updated replica configuration on {repl_instance.host}")
+                
+            except Exception as e:
+                print(f"Failed to update replica configuration: {e}")
+
+    if exporter_pwd:
+        if not _validate_password(exporter_pwd, "Exporter"):
+            return
+        cd.users['exporterPassword'] = exporter_pwd
+        if src:
+            try:
+                src.change_user_password('exporter', exporter_pwd)
+                print(f"Changed exporter user on source {src.host}")
+            except Exception as e:
+                print(f"Failed to alter exporter user on source: {e}")
+
+    if nonpriv_pwd:
+        if not _validate_password(nonpriv_pwd, "Non-privileged"):
+            return
+        cd.users['nonprivPassword'] = nonpriv_pwd
+        nonpriv_user = cd.users.get('nonprivUser')
+        if nonpriv_user and src:
+            try:
+                src.change_user_password(nonpriv_user, nonpriv_pwd)
+                print(f"Changed nonpriv user '{nonpriv_user}' on source {src.host}")
+            except Exception as e:
+                print(f"Failed to alter nonpriv user on source: {e}")
+
+    if root_pwd:
+        if not _validate_password(root_pwd, "Root"):
+            return
+        
+        if src:
+            try:
+                src.change_user_password(src.user, root_pwd)
+                src.password = root_pwd
+                cd.mysqls[src.name].password = root_pwd
+                print(f"Changed root user '{src.user}' on master {src.host}")
+            except Exception as e:
+                print(f"Failed to change root user on master {src.host}: {e}")
+                return
+        
+        if repl_instance:
+            repl_instance.password = root_pwd
+            cd.mysqls[repl_instance.name].password = root_pwd
+            print(f"Updated replica instance password for {repl_instance.host}")
+            
+
+    cluster_data_handler.write_cluster_data(cd)
+    print("WARNING: please restart MySQL manager to force it to use new passwords!")
+    print("Password rotation completed")
+
+    
+    
+
+def _validate_password(password, password_type):
+    if password and len(password) > 32:
+        print(f"Error: {password_type} password exceeds 32 character limit (length: {len(password)})")
+        return False
+    return True
+
+
 if __name__ == '__main__':
     cli()
